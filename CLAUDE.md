@@ -3,7 +3,7 @@
 > 二号位 —— 一人公司的 AI 决策中枢。核心：**备料 → 门禁 → 释放**。
 > 分身只能提议，用户批准后才落到真源。「人类做门禁」是不可动摇的设计。
 
-## 开发流程（强制，两条铁律）
+## 开发流程（强制，三条铁律）
 
 本项目的任何功能改动，**必须**同时遵守下面三条：OpenSpec 立 spec、开 PR 合入、TDD 实现。不走这三步的改动一律不接受。
 
@@ -84,4 +84,7 @@ uv run python seed.py                     # 首次：从旧 projects.json 迁入
 uv run uvicorn app.api:app --port 8899    # 看板 + 门禁 API
 uv run python -m app.mcp_server           # MCP（供分身接入，stdio）
 uv run pytest -q                          # 跑测试（改完必须全绿）
+openspec list                             # 看进行中的 change
 ```
+
+> OpenSpec 已初始化：`openspec/` 存 change/spec，`.claude/` 下已装 `/opsx:propose|apply|archive` 命令与对应 skill。
