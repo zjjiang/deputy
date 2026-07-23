@@ -5,7 +5,7 @@
 
 ## 开发流程（强制，两条铁律）
 
-本项目的任何功能改动，**必须**同时遵守下面两条。不走这两步的改动一律不接受。
+本项目的任何功能改动，**必须**同时遵守下面三条：OpenSpec 立 spec、开 PR 合入、TDD 实现。不走这三步的改动一律不接受。
 
 ### 1. OpenSpec 驱动 —— 先立 spec，再写码
 
@@ -21,7 +21,21 @@
 
 例外：改错别字、格式、注释这类零风险改动，可直接改，不用走 OpenSpec。
 
-### 2. TDD —— 先写测试，再写实现
+### 2. Git 工作流 —— 开 PR，不直推 main
+
+`main` 是两处部署（公司 / Mac mini）的唯一同步源，必须始终可用。**任何改动都不许直接 push 到 main。**
+
+1. 从最新 main 切功能分支：`git switch -c feat/<简述>`（或 `fix/`、`chore/`）。
+2. 在分支上开发（走 TDD），提交。
+3. 推分支：`git push -u origin feat/<简述>`。
+4. 开 PR：`gh pr create`，标题简洁（<70 字），正文写清改了什么、测了什么。
+5. 测试全绿 + 用户审阅通过后，合入 main（`gh pr merge`）。
+6. 合入后删分支。
+
+- 一个 OpenSpec change 对应一个分支 / 一个 PR，边界对齐，便于审阅和回滚。
+- 不 force push、不 reset --hard main。历史保持可追溯。
+
+### 3. TDD —— 先写测试，再写实现
 
 遵循 Red → Green → Refactor：
 
