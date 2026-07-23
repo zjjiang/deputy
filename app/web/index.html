@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>二号位 · 决策中枢</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#fff; --line:#e4e7ec; --txt:#1a1d24; --dim:#8a909c;
+    --attack:#e5484d; --active:#2f6feb; --idle:#c2c7d0; --gate:#f5a623; --ok:#1a7f37;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font:14px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC",sans-serif}
+  header{padding:16px 24px 0;display:flex;align-items:center;gap:12px;max-width:900px;margin:0 auto}
+  header h1{font-size:16px;margin:0;font-weight:700}
+  header .live{margin-left:auto;color:var(--dim);font-size:11px}
+  .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);
+    margin-right:5px;animation:pulse 2s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+  .newproj{border:1px solid var(--line);background:var(--card);color:var(--txt);
+    font-size:12px;padding:4px 12px;border-radius:7px;cursor:pointer}
+  .newproj:hover{border-color:var(--active);color:var(--active)}
+
+  /* Tab 栏 */
+  nav{max-width:900px;margin:12px auto 0;padding:0 24px;display:flex;gap:4px;
+    border-bottom:1px solid var(--line)}
+  nav .tab{padding:9px 16px;font-size:14px;cursor:pointer;color:var(--dim);
+    border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:6px}
+  nav .tab:hover{color:var(--txt)}
+  nav .tab.on{color:var(--active);border-bottom-color:var(--active);font-weight:600}
+  nav .badge{background:var(--gate);color:#fff;border-radius:20px;padding:0 7px;font-size:11px;font-weight:600}
+  nav .badge.zero{background:var(--idle)}
+
+  main{padding:16px 24px 24px;max-width:900px;margin:0 auto;
+    display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(400px,1fr))}
+  .full{grid-column:1/-1}
+
+  /* 门禁：提议卡 */
+  .gate-hd{grid-column:1/-1;font-size:13px;color:var(--dim);margin:0}
+  .prop{grid-column:1/-1;border:1px solid #f0e3c4;border-radius:10px;padding:12px 14px;
+    background:linear-gradient(135deg,#fff8ec,#fff)}
+  .prop .a{font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px}
+  .prop .a .tag{background:#eef;color:var(--active);border-radius:5px;padding:1px 7px;font-size:11px}
+  .prop .why{color:#6a7180;font-size:13px;margin:6px 0 8px}
+  .prop .args{color:var(--dim);font-size:12px;font-family:ui-monospace,monospace;
+    background:#faf7ef;border-radius:5px;padding:5px 9px;margin:4px 0 10px;word-break:break-all}
+  .prop .btns{display:flex;gap:8px}
+  .prop button{border:none;border-radius:7px;padding:6px 18px;font-size:13px;cursor:pointer}
+  .prop .ok{background:var(--ok);color:#fff}
+  .prop .no{background:#fff;color:var(--attack);border:1px solid var(--attack)}
+  .prop .by{color:var(--dim);font-size:11px;margin-left:auto;font-weight:400}
+  .empty{grid-column:1/-1;color:var(--dim);font-size:13px;text-align:center;
+    padding:40px 20px;background:var(--card);border:1px dashed var(--line);border-radius:10px}
+  .hist{grid-column:1/-1;margin-top:8px}
+  .hist .h2{font-size:12px;color:var(--dim);margin:8px 0 4px}
+  .hist .row{font-size:12px;color:var(--dim);padding:3px 0;border-top:1px solid var(--line)}
+  .hist .row .st{font-weight:600}
+  .hist .row .ap{color:var(--ok)} .hist .row .rj{color:var(--attack)}
+
+  /* 此刻聚焦 */
+  .focus{grid-column:1/-1;background:linear-gradient(135deg,#eef4ff,#fff);
+    border:1px solid #cfe0ff;border-radius:12px;padding:14px 18px}
+  .focus .ft{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .focus .by{color:var(--dim);font-size:11px;margin-left:auto}
+  .focus .sum{font-size:15px;font-weight:500;cursor:text}
+  .focus .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+  .focus .chip{background:#fff;border:1px solid #cfe0ff;border-radius:20px;
+    padding:3px 12px;font-size:13px;cursor:pointer;color:var(--active)}
+  .focus .chip:hover{background:var(--active);color:#fff}
+  @keyframes flash{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 3px var(--active)}}
+  .card.flash{animation:flash 1.2s}
+
+  .card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--idle);
+    border-radius:10px;padding:14px 16px}
+  .card.attack{border-left-color:var(--attack);grid-column:1/-1}
+  .card.active{border-left-color:var(--active)}
+  .card.archived{opacity:.5}
+  .card.archived .name{text-decoration:line-through}
+  .card .head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .card .name{font-weight:700;font-size:16px;cursor:text}
+  .card.attack .name{font-size:19px}
+  .stage-sel{margin-left:auto;font-size:12px;color:var(--dim);border:1px solid var(--line);
+    border-radius:6px;padding:2px 6px;background:var(--card);cursor:pointer}
+  .act{border:1px solid var(--line);background:var(--card);color:var(--dim);
+    font-size:11px;padding:2px 8px;border-radius:6px;cursor:pointer}
+  .act:hover{border-color:var(--attack);color:var(--attack)}
+
+  ul.todos{list-style:none;margin:0;padding:0}
+  ul.todos li{display:flex;align-items:flex-start;gap:8px;padding:3px 4px;font-size:14px;border-radius:5px}
+  ul.todos li:hover{background:#f0f2f5}
+  ul.todos li .box{flex:0 0 16px;height:16px;margin-top:3px;border:1.5px solid var(--idle);
+    border-radius:4px;text-align:center;line-height:14px;font-size:11px;color:#fff;cursor:pointer}
+  ul.todos li.done .box{background:var(--ok);border-color:var(--ok)}
+  ul.todos li .txt{flex:1;cursor:pointer}
+  ul.todos li.done .txt{color:var(--dim);text-decoration:line-through}
+  ul.todos li .mini{opacity:0;color:var(--dim);cursor:pointer;font-size:12px;padding:0 3px}
+  ul.todos li:hover .mini{opacity:1}
+  ul.todos li .mini:hover{color:var(--attack)}
+  .addtodo{color:var(--active);font-size:12px;cursor:pointer;margin-top:6px;display:inline-block}
+  .trig{color:var(--active);font-size:12px;margin-top:8px;cursor:pointer}
+  .empty-todo{color:var(--dim);font-size:13px}
+
+  .addbox{grid-column:1/-1;display:flex;gap:8px;margin-bottom:4px}
+  .addbox input{flex:1;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:14px}
+  .addbox button{border:none;background:var(--active);color:#fff;border-radius:8px;padding:8px 18px;cursor:pointer}
+  .bl-item{grid-column:1/-1;background:var(--card);border:1px solid var(--line);
+    border-radius:8px;padding:8px 14px;font-size:14px;display:flex;gap:8px}
+  .bl-item .s{color:var(--dim);font-size:11px;margin-left:auto}
+  footer{grid-column:1/-1;color:var(--dim);font-size:11px;text-align:center;padding-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>二号位 · 决策中枢</h1>
+  <span class="live"><span class="dot"></span>分身提议 · 你做门禁</span>
+</header>
+<nav id="tabs"></nav>
+<main id="board"></main>
+
+<script>
+const ORDER = {attack:0, operate:1, probe:2, maintain:3, frozen:4, archived:5};
+const ACTIVE = new Set(["operate","probe"]);
+const STAGES = {spark:"💡火花",probe:"🔬验证",attack:"🔨主攻",operate:"💰运营",
+                maintain:"🌱维护",frozen:"❄️雪藏",archived:"⚰️归档"};
+const TABS = [["board","🎯 全盘"],["gate","🚪 门禁"],["backlog","💡 需求池"]];
+window._tab = window._tab || "board";
+window._state = null; window._props = [];
+
+async function load(){
+  try{
+    const [s, props] = await Promise.all([
+      fetch("/api/state").then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}),
+      fetch("/api/proposals?status=").then(r=>r.ok?r.json():[])  // 全部，含历史
+    ]);
+    window._state = s; window._props = props;
+    render();
+  }catch(e){
+    document.getElementById("board").innerHTML =
+      `<div class="empty" style="border-color:#e5484d;background:#fdecec;color:#b42318">
+         ⚠️ 连不上决策中枢 —— 请确认服务在运行：
+         <code>uv run uvicorn app.api:app --port 8899</code>（${esc(String(e.message||e))}）</div>`;
+  }
+}
+async function post(url, body){
+  const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"},
+    body: body?JSON.stringify(body):null});
+  if(!r.ok){ const e = await r.json().catch(()=>({})); alert(e.detail||"操作失败"); }
+  await load();
+}
+function setTab(t){ window._tab = t; render(); }
+
+// 门禁
+function approve(id){ post(`/api/proposals/${id}/approve`); }
+function reject(id){ const n=prompt("驳回理由（可空）：",""); if(n!==null) post(`/api/proposals/${id}/reject`,{note:n}); }
+// todo / 项目 / 聚焦 / 需求池
+function toggle(pid,tid,cur){ post("/api/todo/toggle",{project_id:pid,todo_id:tid,done:!cur}); }
+function addTodo(pid){ const t=prompt("新增 todo："); if(t&&t.trim()) post("/api/todo/add",{project_id:pid,text:t}); }
+function editTodo(pid,tid,old){ const t=prompt("修改 todo：",old); if(t&&t.trim()) post("/api/todo/edit",{project_id:pid,todo_id:tid,text:t}); }
+function removeTodo(pid,tid){ if(confirm("删除这条 todo？")) post("/api/todo/remove",{project_id:pid,todo_id:tid}); }
+function addProject(){ const n=prompt("新项目名称（默认💡火花）："); if(n&&n.trim()) post("/api/project/add",{name:n}); }
+function jump(id){ setTab("board"); setTimeout(()=>{const el=document.getElementById("card-"+id);
+  if(el){ el.scrollIntoView({behavior:"smooth",block:"center"});
+    el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }},50); }
+function editFocus(old){ const t=prompt('改写「此刻聚焦」结论：',old);
+  if(t&&t.trim()) post("/api/focus",{summary:t,items:(window._lastFocus||[])}); }
+function renameProject(pid,old){ const n=prompt("项目改名：",old); if(n&&n.trim()) post("/api/project/rename",{project_id:pid,name:n}); }
+function changeStage(pid,st){ post("/api/project/stage",{project_id:pid,stage:st}); }
+function editTrigger(pid,old){ const t=prompt("解冻扳机：",old||""); if(t!==null) post("/api/project/trigger",{project_id:pid,trigger:t}); }
+function archive(pid,ev){ ev.stopPropagation(); if(confirm("归档这个项目？")) post(`/api/project/${pid}/archive`); }
+function addBacklog(){ const el=document.getElementById("bl-in"); const t=el.value;
+  if(t&&t.trim()) post("/api/backlog/add",{text:t}); }
+
+function render(){
+  const s = window._state; if(!s) return;
+  const props = window._props || [];
+  const pend = props.filter(p=>p.status==="pending");
+
+  // Tab 栏（门禁带角标）
+  document.getElementById("tabs").innerHTML = TABS.map(([k,label])=>{
+    const badge = k==="gate"
+      ? `<span class="badge ${pend.length?'':'zero'}">${pend.length}</span>` : "";
+    return `<div class="tab ${k===window._tab?'on':''}" onclick="setTab('${k}')">${label}${badge}</div>`;
+  }).join("");
+
+  let h = "";
+  if(window._tab==="gate") h = renderGate(pend, props);
+  else if(window._tab==="board") h = renderBoard(s);
+  else h = renderBacklog(s);
+  h += `<footer>刷新 ${new Date().toLocaleTimeString()} · 分身提议→你门禁→落 SQLite 真源</footer>`;
+  document.getElementById("board").innerHTML = h;
+}
+
+function renderGate(pend, props){
+  let h = "";
+  if(!pend.length){
+    h += `<div class="empty">🚪 队列空 —— 分身没有待你拍板的提议。<br>
+      它在龙虾/dodo 里 propose 的写操作会出现在这，等你批准或驳回。</div>`;
+  }else{
+    h += `<p class="gate-hd">分身提了 ${pend.length} 条，等你拍板：</p>`;
+    for(const p of pend){
+      const argstr = Object.entries(p.args||{}).map(([k,v])=>`${k}=${JSON.stringify(v)}`).join("  ");
+      h += `<div class="prop">
+        <div class="a"><span class="tag">${esc(p.action)}</span>${esc(actionLabel(p.action))}
+          <span class="by">${esc(p.by)} · #${p.id}</span></div>
+        <div class="why">💡 ${esc(p.reason||"（无理由）")}</div>
+        <div class="args">${esc(argstr)}</div>
+        <div class="btns">
+          <button class="ok" onclick="approve(${p.id})">✓ 批准</button>
+          <button class="no" onclick="reject(${p.id})">✕ 驳回</button>
+        </div></div>`;
+    }
+  }
+  // 最近处理过的
+  const done = props.filter(p=>p.status!=="pending").slice(0,8);
+  if(done.length){
+    h += `<div class="hist"><div class="h2">最近处理过的</div>` + done.map(p=>{
+      const st = p.status==="approved"?`<span class="st ap">✓ 已批</span>`:`<span class="st rj">✕ 驳回</span>`;
+      return `<div class="row">${st} · ${esc(actionLabel(p.action))}${p.note?` · 备注：${esc(p.note)}`:""}</div>`;
+    }).join("") + `</div>`;
+  }
+  return h;
+}
+
+function renderBoard(s){
+  const P = [...s.projects].sort((a,b)=>(ORDER[a.stage]??9)-(ORDER[b.stage]??9));
+  const nameOf = id => (s.projects.find(x=>x.id===id)||{}).name || id;
+  const f = s.focus || {summary:"", items:[]};
+  window._lastFocus = f.items || [];
+  const chips = (f.items||[]).map(id=>`<span class="chip" onclick="jump('${id}')">${esc(nameOf(id))}</span>`).join("");
+  let h = `<div class="focus">
+    <div class="ft"><b>🎯 此刻聚焦</b><span class="by">${esc(f.by||"自动")}判断 · 点事项直达</span></div>
+    <div class="sum" onclick="editFocus(${jq(f.summary||'')})">${esc(f.summary||"（点击设置）")}</div>
+    ${chips?`<div class="chips">${chips}</div>`:""}</div>`;
+  h += `<div class="addbox" style="justify-content:flex-end"><button class="newproj" onclick="addProject()">➕ 新建项目</button></div>`;
+  for(const p of P){
+    const isArch = p.stage==="archived";
+    const cls = isArch?"archived":(p.stage==="attack"?"attack":(ACTIVE.has(p.stage)?"active":""));
+    const todos = (p.todos||[]).map(t=>
+      `<li class="${t.done?"done":""}">
+        <span class="box" onclick="toggle('${p.id}','${t.id}',${t.done})">${t.done?"✓":""}</span>
+        <span class="txt" onclick="toggle('${p.id}','${t.id}',${t.done})">${esc(t.text)}</span>
+        <span class="mini" onclick="editTodo('${p.id}','${t.id}',${jq(t.text)})">✏️</span>
+        <span class="mini" onclick="removeTodo('${p.id}','${t.id}')">✕</span>
+      </li>`).join("");
+    const opts = Object.keys(STAGES).map(k=>`<option value="${k}" ${k===p.stage?"selected":""}>${STAGES[k]}</option>`).join("");
+    h += `<div class="card ${cls}" id="card-${p.id}">
+      <div class="head">
+        <span class="name" onclick="renameProject('${p.id}',${jq(p.name)})">${esc(p.name)}</span>
+        <select class="stage-sel" onchange="changeStage('${p.id}',this.value)">${opts}</select>
+        ${isArch?"":`<span class="act" onclick="archive('${p.id}',event)">归档</span>`}
+      </div>
+      ${todos?`<ul class="todos">${todos}</ul>`:`<div class="empty-todo">暂无 todo</div>`}
+      <span class="addtodo" onclick="addTodo('${p.id}')">＋ 加一条</span>
+      ${p.stage==="frozen"?`<div class="trig" onclick="editTrigger('${p.id}',${jq(p.trigger||'')})">🔓 解冻扳机：${esc(p.trigger||"（点击设置）")}</div>`:""}
+    </div>`;
+  }
+  return h;
+}
+
+function renderBacklog(s){
+  const bl = s.backlog||[];
+  let h = `<div class="addbox">
+    <input id="bl-in" placeholder="丢个想法进来，回车提交…" onkeydown="if(event.key==='Enter')addBacklog()">
+    <button onclick="addBacklog()">丢进池子</button></div>`;
+  if(!bl.length){
+    h += `<div class="empty">💡 需求池空 —— 想到啥丢啥，无需组织语言。<br>分身也可以往这 propose，归类后落进项目。</div>`;
+  }else{
+    h += bl.map(b=>`<div class="bl-item">• ${esc(b.text)}<span class="s">${esc(b.status||"")}</span></div>`).join("");
+  }
+  return h;
+}
+
+function actionLabel(a){return {
+  set_focus:"更新此刻聚焦", add_todo:"加一条 todo", toggle_todo:"勾选/取消 todo",
+  edit_todo:"修改 todo", remove_todo:"删除 todo", set_stage:"改变项目状态",
+  set_drive:"改变谁在推", set_trigger:"设置解冻扳机", add_project:"新建项目",
+  rename_project:"项目改名", add_to_backlog:"丢想法进需求池"}[a]||a;}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
+function jq(s){return JSON.stringify(String(s)).replace(/'/g,"\\'")}
+
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>
