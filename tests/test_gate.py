@@ -88,6 +88,40 @@ def test_attack_uniqueness(fresh_db):
     assert projects.get_project("p2")["stage"] == "probe"
 
 
+def test_set_kind_via_gate(fresh_db):
+    """改 kind 走门禁：propose 不落地，approve 后才变。"""
+    from app.store import projects, proposals
+
+    assert projects.get_project("p1")["kind"] == "biz"
+    prop = proposals.propose("set_kind", {"project_id": "p1", "kind": "tool"},
+                             reason="这个转成自用工具了", now=NOW)
+    # 提议未落地
+    assert projects.get_project("p1")["kind"] == "biz"
+    # 批准后生效
+    proposals.approve(prop["id"], now=NOW)
+    assert projects.get_project("p1")["kind"] == "tool"
+
+
+def test_set_kind_illegal_value_rejected_on_approve(fresh_db):
+    """非法 kind 的提议在 approve 时被拒，保持 pending，真源不变。"""
+    from app.store import projects, proposals
+
+    prop = proposals.propose("set_kind", {"project_id": "p1", "kind": "nonsense"},
+                             reason="非法值", now=NOW)
+    with pytest.raises(Exception):
+        proposals.approve(prop["id"], now=NOW)
+    assert projects.get_project("p1")["kind"] == "biz"
+    assert len(proposals.list_proposals("pending")) == 1
+
+
+def test_set_kind_direct_store_validates(fresh_db):
+    """store.set_kind 直接调用也校验合法值。"""
+    from app.store import projects
+
+    with pytest.raises(Exception):
+        projects.set_kind("p1", "nonsense")
+
+
 def test_list_all_includes_history(fresh_db):
     """status=None 返回全部（含已决策），是 UI '最近处理过的' 的数据源。"""
     from app.store import proposals

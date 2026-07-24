@@ -53,6 +53,7 @@ PROPOSAL_ACTIONS: dict[str, tuple[str, ...]] = {
     "remove_todo": ("project_id", "todo_id"),
     "set_stage": ("project_id", "stage"),
     "set_drive": ("project_id", "drive"),
+    "set_kind": ("project_id", "kind"),
     "set_trigger": ("project_id", "trigger"),
     "add_project": ("name", "stage", "drive", "kind"),
     "rename_project": ("project_id", "name"),

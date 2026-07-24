@@ -55,6 +55,26 @@ def test_illegal_stage_returns_400(client):
     assert r.status_code == 400
 
 
+def test_set_kind_endpoint(client):
+    """用户在看板直接改 kind（不走门禁）。"""
+    assert client.get("/api/project/p1").json()["kind"] == "biz"
+    r = client.post("/api/project/kind", json={"project_id": "p1", "kind": "tool"})
+    assert r.status_code == 200
+    assert client.get("/api/project/p1").json()["kind"] == "tool"
+    # 用户直接改不产生提议
+    assert client.get("/api/proposals").json() == []
+
+
+def test_set_kind_illegal_returns_400(client):
+    r = client.post("/api/project/kind", json={"project_id": "p1", "kind": "nope"})
+    assert r.status_code == 400
+
+
+def test_set_kind_missing_project_returns_404(client):
+    r = client.post("/api/project/kind", json={"project_id": "ghost", "kind": "tool"})
+    assert r.status_code == 404
+
+
 def test_missing_project_returns_404(client):
     r = client.get("/api/project/nope")
     assert r.status_code == 404
