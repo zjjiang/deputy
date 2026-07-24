@@ -9,8 +9,8 @@
     --bg:#f7f8fa; --surface:#fff; --line:#e6e8ec; --line-strong:#d4d7dd;
     --ink:#16181d; --dim:#6b7280; --faint:#9aa0aa;
     --accent:#3b5bdb; --accent-soft:#eef1fd;
-    /* 语义色：仅用于状态竖线/小点，不铺大面积 */
-    --s-attack:#d64545; --s-active:#2f7d6b; --s-cash:#3a8f4e; --s-idle:#a9adb6;
+    /* 语义色：用于桶位竖线/概览色块，加深以便一眼可辨 */
+    --s-attack:#d63a3a; --s-active:#1f7a8c; --s-cash:#2f8f43; --s-probe:#7a5bd6; --s-idle:#b0b4bd;
     --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
   }
   *{box-sizing:border-box}
@@ -38,7 +38,16 @@
     display:grid;gap:11px;grid-template-columns:repeat(auto-fill,minmax(400px,1fr))}
   .full{grid-column:1/-1}
   .section-label{grid-column:1/-1;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
-    color:var(--faint);margin:2px 0 0;font-weight:600}
+    color:var(--faint);margin:6px 0 -2px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .section-label .n{font-family:var(--mono);color:var(--dim)}
+  .section-label .rule{flex:1;height:1px;background:var(--line)}
+
+  /* 桶位概览条 */
+  .overview{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:14px;
+    background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:11px 16px}
+  .ov{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim)}
+  .ov .swatch{width:9px;height:9px;border-radius:2px}
+  .ov .cnt{font-family:var(--mono);font-weight:650;color:var(--ink);font-size:14px}
 
   /* 门禁提议卡 —— 界面唯一视觉重点 */
   .prop{grid-column:1/-1;background:var(--surface);border:1px solid var(--line-strong);
@@ -69,29 +78,32 @@
   .hist .verdict{font-family:var(--mono);font-size:11px;flex:0 0 auto}
   .hist .verdict.ok{color:var(--s-cash)} .hist .verdict.no{color:var(--s-attack)}
 
-  /* 此刻聚焦 */
-  .focus{grid-column:1/-1;background:var(--surface);border:1px solid var(--line-strong);
-    border-radius:8px;padding:15px 18px}
-  .focus .lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);
+  /* 此刻聚焦 —— 页面报头，最醒目 */
+  .focus{grid-column:1/-1;background:var(--ink);color:#fff;
+    border-radius:10px;padding:18px 22px}
+  .focus .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9aa4c4;
     font-weight:600;display:flex;align-items:baseline;gap:8px}
-  .focus .by{margin-left:auto;text-transform:none;letter-spacing:0;font-family:var(--mono)}
-  .focus .sum{font-size:16px;font-weight:550;line-height:1.5;margin-top:7px;cursor:text}
-  .focus .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
-  .focus .chip{background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;
-    padding:3px 11px;font-size:12.5px;cursor:pointer;color:var(--accent)}
-  .focus .chip:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .focus .by{margin-left:auto;text-transform:none;letter-spacing:0;font-family:var(--mono);color:#767f9c}
+  .focus .sum{font-size:19px;font-weight:600;line-height:1.45;margin-top:9px;cursor:text;letter-spacing:-.01em}
+  .focus .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}
+  .focus .chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:6px;
+    padding:4px 12px;font-size:12.5px;cursor:pointer;color:#dbe0f5}
+  .focus .chip:hover{background:#fff;color:var(--ink);border-color:#fff}
   @keyframes flash{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 2px var(--accent)}}
   .card.flash{animation:flash 1.1s}
 
   .toolbar{grid-column:1/-1;display:flex;justify-content:flex-end}
 
   /* 项目卡 */
-  .card{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--s-idle);
+  .card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--s-idle);
     border-radius:8px;padding:13px 16px}
-  .card.attack{border-left-width:4px;border-left-color:var(--s-attack);grid-column:1/-1}
+  .card.attack{border-left-width:5px;border-left-color:var(--s-attack);grid-column:1/-1;
+    box-shadow:0 1px 3px rgba(214,58,58,.08)}
   .card.active{border-left-color:var(--s-active)}
   .card.cash{border-left-color:var(--s-cash)}
-  .card.archived{opacity:.55}
+  .card.probe{border-left-color:var(--s-probe)}
+  .card.frozen{border-left-color:var(--s-idle);background:#fbfbfc}
+  .card.archived{opacity:.5}
   .card.archived .name{text-decoration:line-through}
   .card .head{display:flex;align-items:center;gap:9px;margin-bottom:9px}
   .card .name{font-weight:650;font-size:15px;cursor:text}
@@ -250,39 +262,68 @@ function renderGate(pend, props){
   return h;
 }
 
+// 桶定义：由 stage 映射（不新增数据字段）。顺序即呈现顺序。
+const BUCKETS = [
+  {key:"attack",   label:"主攻",     cls:"attack", color:"var(--s-attack)", stages:["attack"]},
+  {key:"operate",  label:"运营",     cls:"active", color:"var(--s-active)", stages:["operate"]},
+  {key:"maintain", label:"维护 · 收租", cls:"cash", color:"var(--s-cash)",  stages:["maintain"]},
+  {key:"probe",    label:"探索",     cls:"probe",  color:"var(--s-probe)",  stages:["probe","spark"]},
+  {key:"frozen",   label:"雪藏",     cls:"frozen", color:"var(--s-idle)",   stages:["frozen"]},
+  {key:"archived", label:"归档",     cls:"archived",color:"var(--s-idle)",  stages:["archived"]},
+];
+
+function projectCard(p){
+  const isArch = p.stage==="archived";
+  const b = BUCKETS.find(b=>b.stages.includes(p.stage)) || BUCKETS[3];
+  const todos = (p.todos||[]).map(t=>
+    `<li class="${t.done?"done":""}">
+      <span class="box" onclick="toggle('${p.id}','${t.id}',${t.done})">${t.done?"✓":""}</span>
+      <span class="txt" onclick="toggle('${p.id}','${t.id}',${t.done})">${esc(t.text)}</span>
+      <span class="mini" onclick="editTodo('${p.id}','${t.id}',${jq(t.text)})">改</span>
+      <span class="mini" onclick="removeTodo('${p.id}','${t.id}')">×</span>
+    </li>`).join("");
+  const opts = Object.keys(STAGES).map(k=>`<option value="${k}" ${k===p.stage?"selected":""}>${STAGES[k]}</option>`).join("");
+  return `<div class="card ${b.cls}" id="card-${p.id}">
+    <div class="head">
+      <span class="pid">${esc(p.id)}</span>
+      <span class="name" onclick="renameProject('${p.id}',${jq(p.name)})">${esc(p.name)}</span>
+      <span class="kind-badge">${p.kind==="tool"?"工具":"商业"}</span>
+      <select class="stage-sel" onchange="changeStage('${p.id}',this.value)">${opts}</select>
+      ${isArch?"":`<span class="act" onclick="archive('${p.id}',event)">归档</span>`}
+    </div>
+    ${todos?`<ul class="todos">${todos}</ul>`:`<div class="empty-todo">暂无 todo</div>`}
+    <span class="addtodo" onclick="addTodo('${p.id}')">＋ 加一条</span>
+    ${p.stage==="frozen"?`<div class="trig" onclick="editTrigger('${p.id}',${jq(p.trigger||'')})">解冻扳机：<b>${esc(p.trigger||"（点击设置）")}</b></div>`:""}
+  </div>`;
+}
+
 function renderBoard(s){
-  const P = [...s.projects].sort((a,b)=>(ORDER[a.stage]??9)-(ORDER[b.stage]??9));
   const nameOf = id => (s.projects.find(x=>x.id===id)||{}).name || id;
   const f = s.focus || {summary:"", items:[]};
   window._lastFocus = f.items || [];
   const chips = (f.items||[]).map(id=>`<span class="chip" onclick="jump('${id}')">${esc(nameOf(id))}</span>`).join("");
+
+  // 焦点报头
   let h = `<div class="focus">
     <div class="lbl">此刻聚焦<span class="by">${esc(f.by||"自动")}判断 · 点事项直达</span></div>
     <div class="sum" onclick="editFocus(${jq(f.summary||'')})">${esc(f.summary||"（点击设置）")}</div>
     ${chips?`<div class="chips">${chips}</div>`:""}</div>`;
-  h += `<div class="toolbar"><button class="act" onclick="addProject()">＋ 新建项目</button></div>`;
-  for(const p of P){
-    const isArch = p.stage==="archived";
-    const cls = isArch?"archived":(p.stage==="attack"?"attack":(CASH.has(p.stage)?"cash":(ACTIVE.has(p.stage)?"active":"")));
-    const todos = (p.todos||[]).map(t=>
-      `<li class="${t.done?"done":""}">
-        <span class="box" onclick="toggle('${p.id}','${t.id}',${t.done})">${t.done?"✓":""}</span>
-        <span class="txt" onclick="toggle('${p.id}','${t.id}',${t.done})">${esc(t.text)}</span>
-        <span class="mini" onclick="editTodo('${p.id}','${t.id}',${jq(t.text)})">改</span>
-        <span class="mini" onclick="removeTodo('${p.id}','${t.id}')">×</span>
-      </li>`).join("");
-    const opts = Object.keys(STAGES).map(k=>`<option value="${k}" ${k===p.stage?"selected":""}>${STAGES[k]}</option>`).join("");
-    h += `<div class="card ${cls}" id="card-${p.id}">
-      <div class="head">
-        <span class="name" onclick="renameProject('${p.id}',${jq(p.name)})">${esc(p.name)}</span>
-        <span class="kind-badge">${p.kind==="tool"?"工具":"商业"}</span>
-        <select class="stage-sel" onchange="changeStage('${p.id}',this.value)">${opts}</select>
-        ${isArch?"":`<span class="act" onclick="archive('${p.id}',event)">归档</span>`}
-      </div>
-      ${todos?`<ul class="todos">${todos}</ul>`:`<div class="empty-todo">暂无 todo</div>`}
-      <span class="addtodo" onclick="addTodo('${p.id}')">＋ 加一条</span>
-      ${p.stage==="frozen"?`<div class="trig" onclick="editTrigger('${p.id}',${jq(p.trigger||'')})">解冻扳机：<b>${esc(p.trigger||"（点击设置）")}</b></div>`:""}
-    </div>`;
+
+  // 按桶分组
+  const byBucket = BUCKETS.map(b=>({b, items: s.projects.filter(p=>b.stages.includes(p.stage))}));
+
+  // 桶位概览条（只列非空桶）
+  const ov = byBucket.filter(x=>x.items.length).map(x=>
+    `<span class="ov"><span class="swatch" style="background:${x.b.color}"></span>${x.b.label}<span class="cnt">${x.items.length}</span></span>`
+  ).join("");
+  h += `<div class="overview">${ov||'<span class="ov">暂无项目</span>'}
+    <span style="margin-left:auto"><button class="act" onclick="addProject()">＋ 新建项目</button></span></div>`;
+
+  // 各桶分区
+  for(const {b, items} of byBucket){
+    if(!items.length) continue;
+    h += `<p class="section-label">${b.label}<span class="n">${items.length}</span><span class="rule"></span></p>`;
+    for(const p of items) h += projectCard(p);
   }
   return h;
 }
