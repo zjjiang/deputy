@@ -223,6 +223,16 @@ def set_drive(project_id: str, drive: str) -> dict[str, Any]:
     return get_project(project_id)
 
 
+def set_kind(project_id: str, kind: str) -> dict[str, Any]:
+    """改项目类型 biz(商业)/tool(自用工具)。任意互转，无状态约束。"""
+    if kind not in domain.VALID_KINDS:
+        raise domain.DomainError(f"非法类型 {kind}")
+    with transaction() as conn:
+        _require_project(conn, project_id)
+        conn.execute("UPDATE projects SET kind = ? WHERE id = ?", (kind, project_id))
+    return get_project(project_id)
+
+
 def set_trigger(project_id: str, trigger: str) -> dict[str, Any]:
     with transaction() as conn:
         _require_project(conn, project_id)
@@ -313,6 +323,7 @@ _DISPATCH = {
     "remove_todo": lambda a: remove_todo(a["project_id"], a["todo_id"]),
     "set_stage": lambda a: set_stage(a["project_id"], a["stage"]),
     "set_drive": lambda a: set_drive(a["project_id"], a["drive"]),
+    "set_kind": lambda a: set_kind(a["project_id"], a["kind"]),
     "set_trigger": lambda a: set_trigger(a["project_id"], a["trigger"]),
     "add_project": lambda a: add_project(
         a["name"], a.get("stage", "spark"), a.get("drive", "self"), a.get("kind", "biz")

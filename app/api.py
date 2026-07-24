@@ -134,6 +134,11 @@ class ProjectStage(BaseModel):
     stage: str
 
 
+class ProjectKind(BaseModel):
+    project_id: str
+    kind: str
+
+
 class ProjectTrigger(BaseModel):
     project_id: str
     trigger: str
@@ -181,6 +186,11 @@ def project_rename(b: ProjectRename) -> dict[str, Any]:
 @app.post("/api/project/stage")
 def project_stage(b: ProjectStage) -> dict[str, Any]:
     return _guard(lambda: projects.set_stage(b.project_id, b.stage))
+
+
+@app.post("/api/project/kind")
+def project_kind(b: ProjectKind) -> dict[str, Any]:
+    return _guard(lambda: projects.set_kind(b.project_id, b.kind))
 
 
 @app.post("/api/project/trigger")

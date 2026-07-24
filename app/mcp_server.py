@@ -58,6 +58,7 @@ def propose(action: str, args: dict, reason: str) -> dict:
       - remove_todo     {project_id, todo_id}
       - set_stage       {project_id, stage}    受状态机+主攻唯一约束
       - set_drive       {project_id, drive}
+      - set_kind        {project_id, kind}     biz(商业)/tool(自用工具)
       - set_trigger     {project_id, trigger}
       - add_project     {name, stage?, drive?, kind?}
       - rename_project  {project_id, name}
