@@ -80,6 +80,8 @@
   .card .head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
   .card .name{font-weight:700;font-size:16px;cursor:text}
   .card.attack .name{font-size:19px}
+  .kind-badge{font-size:11px;color:var(--dim);background:#f0f2f5;border-radius:5px;
+    padding:1px 7px;white-space:nowrap}
   .stage-sel{margin-left:auto;font-size:12px;color:var(--dim);border:1px solid var(--line);
     border-radius:6px;padding:2px 6px;background:var(--card);cursor:pointer}
   .act{border:1px solid var(--line);background:var(--card);color:var(--dim);
@@ -247,6 +249,7 @@ function renderBoard(s){
     h += `<div class="card ${cls}" id="card-${p.id}">
       <div class="head">
         <span class="name" onclick="renameProject('${p.id}',${jq(p.name)})">${esc(p.name)}</span>
+        <span class="kind-badge">${p.kind==="tool"?"🔧 工具":"💰 商业"}</span>
         <select class="stage-sel" onchange="changeStage('${p.id}',this.value)">${opts}</select>
         ${isArch?"":`<span class="act" onclick="archive('${p.id}',event)">归档</span>`}
       </div>
