@@ -155,7 +155,8 @@ def todo_add(b: TodoAdd) -> dict[str, Any]:
 
 @app.post("/api/todo/toggle")
 def todo_toggle(b: TodoToggle) -> dict[str, Any]:
-    return _guard(lambda: projects.toggle_todo(b.project_id, b.todo_id, b.done))
+    from datetime import datetime
+    return _guard(lambda: projects.toggle_todo(b.project_id, b.todo_id, b.done, now=datetime.now().isoformat()))
 
 
 @app.post("/api/todo/edit")

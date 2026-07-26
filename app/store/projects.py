@@ -17,7 +17,7 @@ from .db import get_conn, transaction
 
 def _project_row_to_dict(conn: sqlite3.Connection, row: sqlite3.Row) -> dict[str, Any]:
     todos = conn.execute(
-        "SELECT id, text, done FROM todos WHERE project_id = ? ORDER BY ord, id",
+        "SELECT id, text, done, done_at FROM todos WHERE project_id = ? ORDER BY ord, id",
         (row["id"],),
     ).fetchall()
     return {
@@ -28,7 +28,7 @@ def _project_row_to_dict(conn: sqlite3.Connection, row: sqlite3.Row) -> dict[str
         "kind": row["kind"],
         "trigger": row["trigger"],
         "todos": [
-            {"id": t["id"], "text": t["text"], "done": bool(t["done"])} for t in todos
+            {"id": t["id"], "text": t["text"], "done": bool(t["done"]), "done_at": t["done_at"]} for t in todos
         ],
     }
 
@@ -152,11 +152,11 @@ def add_todo(project_id: str, text: str) -> dict[str, Any]:
     return get_project(project_id)
 
 
-def toggle_todo(project_id: str, todo_id: str, done: bool = True) -> dict[str, Any]:
+def toggle_todo(project_id: str, todo_id: str, done: bool = True, *, now: str | None = None) -> dict[str, Any]:
     with transaction() as conn:
         cur = conn.execute(
-            "UPDATE todos SET done = ? WHERE project_id = ? AND id = ?",
-            (1 if done else 0, project_id, todo_id),
+            "UPDATE todos SET done = ?, done_at = ? WHERE project_id = ? AND id = ?",
+            (1 if done else 0, now if done else None, project_id, todo_id),
         )
         if cur.rowcount == 0:
             raise KeyError(f"项目 {project_id} 下找不到 todo {todo_id}")
@@ -318,7 +318,7 @@ def delete_project(project_id: str) -> dict[str, Any]:
 _DISPATCH = {
     "set_focus": lambda a: set_focus(a["summary"], a.get("items"), a.get("by", "分身")),
     "add_todo": lambda a: add_todo(a["project_id"], a["text"]),
-    "toggle_todo": lambda a: toggle_todo(a["project_id"], a["todo_id"], a.get("done", True)),
+    "toggle_todo": lambda a, now=None: toggle_todo(a["project_id"], a["todo_id"], a.get("done", True), now=now),
     "edit_todo": lambda a: edit_todo(a["project_id"], a["todo_id"], a["text"]),
     "remove_todo": lambda a: remove_todo(a["project_id"], a["todo_id"]),
     "set_stage": lambda a: set_stage(a["project_id"], a["stage"]),
@@ -333,9 +333,14 @@ _DISPATCH = {
 }
 
 
-def dispatch(action: str, args: dict[str, Any]) -> Any:
+def dispatch(action: str, args: dict[str, Any], *, now: str | None = None) -> Any:
     """执行一个已批准的动作。未知 action 抛错。"""
     fn = _DISPATCH.get(action)
     if fn is None:
         raise domain.DomainError(f"未知动作 {action}")
+    # 需要 now 的 action 通过 lambda 默认参数接收
+    import inspect
+    sig = inspect.signature(fn)
+    if "now" in sig.parameters:
+        return fn(args, now=now)
     return fn(args)
