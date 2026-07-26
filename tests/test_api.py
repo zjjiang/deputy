@@ -86,3 +86,18 @@ def test_user_direct_edit_bypasses_gate(client):
     assert r.status_code == 200
     assert client.get("/api/proposals").json() == []  # 没产生提议
     assert len(client.get("/api/project/p1").json()["todos"]) == 1
+
+
+def test_toggle_done_at_in_api(client):
+    """API toggle 后返回 done_at(有值)；undone 后 done_at 为 null。"""
+    client.post("/api/todo/add", json={"project_id": "p1", "text": "测时间戳"})
+    tid = client.get("/api/project/p1").json()["todos"][0]["id"]
+    # done
+    r = client.post("/api/todo/toggle", json={"project_id": "p1", "todo_id": tid, "done": True})
+    assert r.status_code == 200
+    todo = next(t for t in r.json()["todos"] if t["id"] == tid)
+    assert todo["done_at"] is not None and len(todo["done_at"]) > 10  # ISO string
+    # undone
+    r = client.post("/api/todo/toggle", json={"project_id": "p1", "todo_id": tid, "done": False})
+    todo = next(t for t in r.json()["todos"] if t["id"] == tid)
+    assert todo["done_at"] is None

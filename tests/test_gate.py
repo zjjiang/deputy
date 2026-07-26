@@ -131,3 +131,37 @@ def test_list_all_includes_history(fresh_db):
     proposals.propose("add_to_backlog", {"text": "b"}, reason="r", now=NOW)
     assert len(proposals.list_proposals(None)) == 2
     assert len(proposals.list_proposals("pending")) == 1
+
+
+def test_toggle_todo_done_at_via_gate(fresh_db):
+    """门禁 approve toggle_todo 时，done_at 记 approve 时间。"""
+    from app.store import projects, proposals
+
+    # 先加一条 todo
+    proposals.propose("add_todo", {"project_id": "p1", "text": "测 done_at"},
+                      reason="铺测试", now="2026-07-20T10:00:00")
+    proposals.approve(1, now="2026-07-20T10:00:00")
+    tid = projects.get_project("p1")["todos"][0]["id"]
+
+    # propose toggle done
+    proposals.propose("toggle_todo", {"project_id": "p1", "todo_id": tid, "done": True},
+                      reason="完成了", now="2026-07-21T08:00:00")
+    proposals.approve(2, now="2026-07-22T09:30:00")  # approve 时间
+    t = projects.get_project("p1")["todos"][0]
+    assert t["done"] is True
+    assert t["done_at"] == "2026-07-22T09:30:00"
+
+
+def test_toggle_todo_undone_clears_done_at(fresh_db):
+    """取消完成后 done_at 清空。"""
+    from app.store import projects, proposals
+
+    proposals.propose("add_todo", {"project_id": "p1", "text": "先完成再取消"},
+                      reason="t", now=NOW)
+    proposals.approve(1, now=NOW)
+    tid = projects.get_project("p1")["todos"][0]["id"]
+    # 直接 store 调用（用户侧，不走门禁）
+    projects.toggle_todo("p1", tid, done=True, now="2026-07-23T12:00:00")
+    assert projects.get_project("p1")["todos"][0]["done_at"] == "2026-07-23T12:00:00"
+    projects.toggle_todo("p1", tid, done=False, now="2026-07-23T13:00:00")
+    assert projects.get_project("p1")["todos"][0]["done_at"] is None

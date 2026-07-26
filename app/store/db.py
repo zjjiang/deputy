@@ -78,6 +78,10 @@ def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _connect() as conn:
         conn.executescript(SCHEMA)
+        # 幂等迁移：给 todos 加 done_at（历史数据留 NULL）
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(todos)").fetchall()]
+        if "done_at" not in cols:
+            conn.execute("ALTER TABLE todos ADD COLUMN done_at TEXT")
 
 
 @contextmanager

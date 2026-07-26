@@ -126,6 +126,7 @@
   ul.todos li.done .box{background:var(--s-cash);border-color:var(--s-cash)}
   ul.todos li .txt{flex:1;cursor:pointer}
   ul.todos li.done .txt{color:var(--faint);text-decoration:line-through}
+  .done-at{font-family:var(--mono);font-size:11px;color:var(--faint);margin-left:auto;white-space:nowrap}
   ul.todos li .mini{opacity:0;color:var(--faint);cursor:pointer;font-size:12px;padding:0 3px}
   ul.todos li:hover .mini{opacity:1}
   ul.todos li .mini:hover{color:var(--s-attack)}
@@ -276,13 +277,13 @@ const BUCKETS = [
 function projectCard(p){
   const isArch = p.stage==="archived";
   const b = BUCKETS.find(b=>b.stages.includes(p.stage)) || BUCKETS[3];
-  const todos = (p.todos||[]).map(t=>
-    `<li class="${t.done?"done":""}">
+  const todos = (p.todos||[]).map(t=>{
+    const doneAt = t.done_at ? `<span class="done-at">${t.done_at.slice(5,10)}</span>` : "";
+    return `<li class="${t.done?"done":""}">
       <span class="box" onclick="toggle('${p.id}','${t.id}',${t.done})">${t.done?"✓":""}</span>
-      <span class="txt" onclick="toggle('${p.id}','${t.id}',${t.done})">${esc(t.text)}</span>
-      <span class="mini" onclick="editTodo('${p.id}','${t.id}',${jq(t.text)})">改</span>
+      <span class="txt" onclick="toggle('${p.id}','${t.id}',${t.done})">${esc(t.text)}</span>${doneAt}
       <span class="mini" onclick="removeTodo('${p.id}','${t.id}')">×</span>
-    </li>`).join("");
+    </li>`}).join("");
   const opts = Object.keys(STAGES).map(k=>`<option value="${k}" ${k===p.stage?"selected":""}>${STAGES[k]}</option>`).join("");
   return `<div class="card ${b.cls}" id="card-${p.id}">
     <div class="head">
