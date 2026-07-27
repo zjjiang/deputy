@@ -17,5 +17,5 @@
 
 ## 4. 收尾
 
-- [ ] 4.1 提交进 feat/redesign-board-ui 分支（并入现有 PR#5）。
-- [ ] 4.2 合并后归档 redesign-board-ui + command-center-layout 两个 change。
+- [x] 4.1 提交进 feat/redesign-board-ui 分支（并入现有 PR#5）。
+- [x] 4.2 合并后归档 redesign-board-ui + command-center-layout 两个 change。
