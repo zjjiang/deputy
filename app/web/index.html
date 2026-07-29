@@ -282,8 +282,8 @@ function projectCard(p){
     return `<li class="${t.done?"done":""}">
       <span class="box" onclick="toggle('${p.id}','${t.id}',${t.done})">${t.done?"✓":""}</span>
       <span class="txt" onclick="toggle('${p.id}','${t.id}',${t.done})">${esc(t.text)}</span>${doneAt}
-      <span class="mini" onclick="editTodo('${p.id}','${t.id}',${jq(t.text)})">改</span>
-      <span class="mini" onclick="removeTodo('${p.id}','${t.id}')">×</span>
+      <span class="mini" title="修改" onclick="editTodo('${p.id}','${t.id}',${jq(t.text)})">✎</span>
+      <span class="mini" title="删除" onclick="removeTodo('${p.id}','${t.id}')">×</span>
     </li>`}).join("");
   const opts = Object.keys(STAGES).map(k=>`<option value="${k}" ${k===p.stage?"selected":""}>${STAGES[k]}</option>`).join("");
   return `<div class="card ${b.cls}" id="card-${p.id}">
@@ -351,7 +351,11 @@ function actionLabel(a){return {
   set_drive:"改变谁在推", set_kind:"改变项目类型", set_trigger:"设置解冻扳机",
   add_project:"新建项目", rename_project:"项目改名", add_to_backlog:"丢想法进需求池"}[a]||a;}
 function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
-function jq(s){return JSON.stringify(String(s)).replace(/'/g,"\\'")}
+// 供双引号 onclick 内安全传字符串参数：先做成单引号 JS 字符串字面量，再 HTML 转义
+function jq(s){
+  const lit = "'" + String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\n/g,"\\n") + "'";
+  return lit.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
 
 load();
 setInterval(load, 5000);
