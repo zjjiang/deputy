@@ -80,6 +80,35 @@ def test_missing_project_returns_404(client):
     assert r.status_code == 404
 
 
+def test_reorder_endpoint(client, fresh_db):
+    """用户在看板直接排序（不走门禁）。"""
+    with fresh_db.transaction() as conn:
+        conn.execute(
+            "INSERT INTO projects (id, name, stage, drive, kind, trigger, ord) "
+            "VALUES ('p2', '第二项目', 'probe', 'self', 'biz', '', 1)"
+        )
+    r = client.post("/api/project/reorder", json={"project_id": "p2", "target_id": "p1", "position": "before"})
+    assert r.status_code == 200
+    ids = [p["id"] for p in client.get("/api/state").json()["projects"]]
+    assert ids == ["p2", "p1"]
+    assert client.get("/api/proposals").json() == []  # 用户直接改不产生提议
+
+
+def test_reorder_missing_target_returns_404(client):
+    r = client.post("/api/project/reorder", json={"project_id": "p1", "target_id": "ghost", "position": "before"})
+    assert r.status_code == 404
+
+
+def test_reorder_illegal_position_returns_400(client, fresh_db):
+    with fresh_db.transaction() as conn:
+        conn.execute(
+            "INSERT INTO projects (id, name, stage, drive, kind, trigger, ord) "
+            "VALUES ('p2', '第二项目', 'probe', 'self', 'biz', '', 1)"
+        )
+    r = client.post("/api/project/reorder", json={"project_id": "p1", "target_id": "p2", "position": "sideways"})
+    assert r.status_code == 400
+
+
 def test_user_direct_edit_bypasses_gate(client):
     """你在看板直接加 todo（你自己拍板）不进提议队列，直接落地。"""
     r = client.post("/api/todo/add", json={"project_id": "p1", "text": "我自己加的"})

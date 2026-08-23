@@ -262,13 +262,35 @@ def add_project(
         while f"n{n}" in existing:
             n += 1
         pid = f"n{n}"
-        ordv = conn.execute("SELECT COUNT(*) AS c FROM projects").fetchone()["c"]
+        max_ord = conn.execute("SELECT MAX(ord) AS m FROM projects").fetchone()["m"]
+        ordv = 0 if max_ord is None else max_ord + 1
         conn.execute(
             "INSERT INTO projects (id, name, stage, drive, kind, trigger, ord) "
             "VALUES (?, ?, ?, ?, ?, '', ?)",
             (pid, name.strip(), stage, drive, kind, ordv),
         )
     return get_project(pid)
+
+
+def reorder_project(project_id: str, target_id: str, position: str) -> dict[str, Any]:
+    """把 project_id 插到 target_id 前/后，随后把全部项目的 ord 重新编号为连续整数。
+    只操作全局 ord 序列，不感知桶/stage 的分组概念（那是前端展示层的事）。
+    """
+    if position not in domain.VALID_REORDER_POSITIONS:
+        raise domain.DomainError(f"非法排序位置 {position}")
+    with transaction() as conn:
+        _require_project(conn, project_id)
+        _require_project(conn, target_id)
+        if project_id == target_id:
+            return get_project(project_id)
+        ids = [r["id"] for r in conn.execute("SELECT id FROM projects ORDER BY ord, id")]
+        ids.remove(project_id)
+        target_idx = ids.index(target_id)
+        insert_at = target_idx if position == "before" else target_idx + 1
+        ids.insert(insert_at, project_id)
+        for i, pid in enumerate(ids):
+            conn.execute("UPDATE projects SET ord = ? WHERE id = ?", (i, pid))
+    return get_project(project_id)
 
 
 def rename_project(project_id: str, name: str) -> dict[str, Any]:
@@ -330,6 +352,7 @@ _DISPATCH = {
     ),
     "rename_project": lambda a: rename_project(a["project_id"], a["name"]),
     "add_to_backlog": lambda a: add_to_backlog(a["text"]),
+    "reorder_project": lambda a: reorder_project(a["project_id"], a["target_id"], a["position"]),
 }
 
 

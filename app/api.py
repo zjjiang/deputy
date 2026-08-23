@@ -144,6 +144,12 @@ class ProjectTrigger(BaseModel):
     trigger: str
 
 
+class ProjectReorder(BaseModel):
+    project_id: str
+    target_id: str
+    position: str
+
+
 class BacklogAdd(BaseModel):
     text: str
 
@@ -197,6 +203,11 @@ def project_kind(b: ProjectKind) -> dict[str, Any]:
 @app.post("/api/project/trigger")
 def project_trigger(b: ProjectTrigger) -> dict[str, Any]:
     return _guard(lambda: projects.set_trigger(b.project_id, b.trigger))
+
+
+@app.post("/api/project/reorder")
+def project_reorder(b: ProjectReorder) -> dict[str, Any]:
+    return _guard(lambda: projects.reorder_project(b.project_id, b.target_id, b.position))
 
 
 @app.post("/api/project/{project_id}/archive")
