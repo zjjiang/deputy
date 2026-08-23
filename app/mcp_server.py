@@ -63,6 +63,8 @@ def propose(action: str, args: dict, reason: str) -> dict:
       - add_project     {name, stage?, drive?, kind?}
       - rename_project  {project_id, name}
       - add_to_backlog  {text}                 丢想法进需求池
+      - reorder_project {project_id, target_id, position}  排序：把 project_id 插到
+                                                target_id 前(before)/后(after)
 
     reason 必填：一句话说清"为什么提这个、关联哪个项目/判断"，供用户在门禁处快速拍板。
     """

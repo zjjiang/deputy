@@ -12,6 +12,7 @@ VALID_STAGES: frozenset[str] = frozenset(
 )
 VALID_DRIVES: frozenset[str] = frozenset({"self", "assist", "auto"})
 VALID_KINDS: frozenset[str] = frozenset({"biz", "tool"})
+VALID_REORDER_POSITIONS: frozenset[str] = frozenset({"before", "after"})
 
 # 状态机：每个状态允许迁移到哪些状态。
 # 主线 spark→probe→attack→operate→maintain；任何状态都能被雪藏或归档；
@@ -58,6 +59,7 @@ PROPOSAL_ACTIONS: dict[str, tuple[str, ...]] = {
     "add_project": ("name", "stage", "drive", "kind"),
     "rename_project": ("project_id", "name"),
     "add_to_backlog": ("text",),
+    "reorder_project": ("project_id", "target_id", "position"),
 }
 
 
