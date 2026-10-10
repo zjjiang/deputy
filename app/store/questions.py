@@ -169,6 +169,39 @@ def list_questions(now: str, due_only: bool = False) -> list[dict[str, Any]]:
     return out
 
 
+def list_questions_overview(now: str) -> list[dict[str, Any]]:
+    """看板聚合视图：每题附 due/due_reason/unread_count/last_answer_at/preview。
+
+    unread_count 只数 status='new'（submit 时同日旧版已被标 superseded，
+    所以 new 行天然是各日最新版本）；preview/last_answer_at 取最新一条回答。
+    """
+    with get_conn() as conn:
+        rows = conn.execute("SELECT * FROM questions ORDER BY ord, id").fetchall()
+        out: list[dict[str, Any]] = []
+        for r in rows:
+            due, reason = _due_info(r, now)
+            q = _row_to_question(r)
+            q["due"] = due
+            q["due_reason"] = reason
+            stat = conn.execute(
+                """
+                SELECT
+                  (SELECT COUNT(*) FROM answers
+                    WHERE question_id = :qid AND status = 'new') AS unread,
+                  (SELECT created FROM answers WHERE question_id = :qid
+                    ORDER BY run_date DESC, version DESC, id DESC LIMIT 1) AS last_answer_at,
+                  (SELECT body_md FROM answers WHERE question_id = :qid
+                    ORDER BY run_date DESC, version DESC, id DESC LIMIT 1) AS preview
+                """,
+                {"qid": r["id"]},
+            ).fetchone()
+            q["unread_count"] = stat["unread"]
+            q["last_answer_at"] = stat["last_answer_at"]
+            q["preview"] = (stat["preview"] or "")[:120]
+            out.append(q)
+    return out
+
+
 def list_answers(question_id: str, limit: int = 30) -> list[dict[str, Any]]:
     """列某题的全部版本（含 superseded），新的在前。"""
     if limit < 1:

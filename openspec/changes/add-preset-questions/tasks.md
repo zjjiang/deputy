@@ -10,8 +10,8 @@
 
 ## 2. API 层（TDD：Red → Green）
 
-- [ ] 2.1 写 `tests/test_questions_api.py`（Red）：GET /api/questions 聚合字段（unread_count 仅最新版计数/last_answer_at/预览/due）；question add/edit/remove/run、answers?limit、answer read/delete 的 200 路径；非法 cadence→400；不存在→404；run 后 store 里 requested_at 生效；跑确认全红
-- [ ] 2.2 `app/api.py`（Green）：9 个端点 + Pydantic body 类 + `_guard` 转发；边界层 `zoneinfo` 算 run_date（Asia/Shanghai）与 UTC now；跑 `uv run pytest -q tests/test_questions_api.py` 全绿
+- [x] 2.1 写 `tests/test_questions_api.py`（Red）：GET /api/questions 聚合字段（unread_count 仅最新版计数/last_answer_at/预览/due）；question add/edit/remove/run、answers?limit、answer read/delete 的 200 路径；非法 cadence→400；不存在→404；run 后 store 里 requested_at 生效；跑确认全红
+- [x] 2.2 `app/api.py`（Green）：9 个端点 + Pydantic body 类 + `_guard` 转发；边界层 `zoneinfo` 算 run_date（Asia/Shanghai）与 UTC now；跑 `uv run pytest -q tests/test_questions_api.py` 全绿
 
 ## 3. MCP 层（TDD：Red → Green）
 
