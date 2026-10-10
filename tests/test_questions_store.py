@@ -54,15 +54,16 @@ def test_add_question_illegal_cadence_rejected(fresh_db):
 
 def test_add_question_filter_validation(fresh_db):
     with pytest.raises(Exception):
-        _mk(fresh_db, filter={"kinds": ["biz", "nope"]})  # kinds 越界
+        _mk(fresh_db, filter={"kinds": "paper"})  # kinds 必须是数组
     with pytest.raises(Exception):
         _mk(fresh_db, filter={"days": 0})  # 非正整数
     with pytest.raises(Exception):
         _mk(fresh_db, filter={"max_docs": -1})
     with pytest.raises(Exception):
         _mk(fresh_db, filter={"unknown": 1})  # 未知过滤键
-    q = _mk(fresh_db, filter={"kinds": ["biz"], "days": 7})
-    assert q["filter"] == {"kinds": ["biz"], "days": 7}  # 返回解析后的 dict
+    # kinds/domain 是 feed-curator 侧分类法，deputy 不校验取值、透传
+    q = _mk(fresh_db, filter={"kinds": ["paper", "article"], "domain": "具身智能", "days": 7})
+    assert q["filter"] == {"kinds": ["paper", "article"], "domain": "具身智能", "days": 7}
 
 
 def test_edit_question(fresh_db):

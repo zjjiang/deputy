@@ -5,7 +5,7 @@
 ## ADDED Requirements
 
 ### Requirement: 用户管理预设问题
-用户 SHALL 能在看板/HTTP API 创建、编辑、删除预设问题。问题包含：标题、prompt（给 AI 的完整问题文本）、过滤器（`kinds` ⊆ 项目类型白名单、`domain` 为 feed-curator 侧的不透明字符串、`days` 时间窗天数、`max_docs` 单次取料上限）、节奏 `cadence` ∈ {daily, weekly, manual}。非法取值 SHALL 被拒绝并返回业务错误（HTTP 400）；操作不存在的问题 SHALL 返回未找到（HTTP 404）。
+用户 SHALL 能在看板/HTTP API 创建、编辑、删除预设问题。问题包含：标题、prompt（给 AI 的完整问题文本）、过滤器（`kinds`/`domain` 为 feed-curator 侧的文档类型与领域，deputy 不拥有该分类法，SHALL 只做类型检查、按不透明值透传，不校验取值；`days` 时间窗天数、`max_docs` 单次取料上限，均为正整数）、节奏 `cadence` ∈ {daily, weekly, manual}。非法取值 SHALL 被拒绝并返回业务错误（HTTP 400）；操作不存在的问题 SHALL 返回未找到（HTTP 404）。
 
 #### Scenario: 创建一个每日问题
 - **WHEN** 用户提交合法的标题、prompt、过滤器和 `cadence=daily`

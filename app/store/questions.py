@@ -30,9 +30,10 @@ def _require_question(conn: sqlite3.Connection, question_id: str) -> sqlite3.Row
 
 
 def _validate_filter(flt: Any) -> dict[str, Any]:
-    """校验问题过滤器：白名单键 + kinds ⊆ VALID_KINDS + days/max_docs 正整数。
+    """校验问题过滤器：白名单键 + days/max_docs 正整数。
 
-    domain 是 feed-curator 侧的不透明字符串，这里只查类型不查语义。
+    kinds/domain 是 feed-curator 侧语义（文档类型/领域），deputy 不拥有该分类法，
+    只做类型检查、按不透明值透传，不校验取值。
     """
     if flt is None:
         return {}
@@ -46,11 +47,9 @@ def _validate_filter(flt: Any) -> dict[str, Any]:
     kinds = flt.get("kinds")
     if kinds is not None:
         if not isinstance(kinds, list) or any(
-            k not in domain.VALID_KINDS for k in kinds
+            not isinstance(k, str) for k in kinds
         ):
-            raise domain.DomainError(
-                f"kinds 必须是 {sorted(domain.VALID_KINDS)} 的子集"
-            )
+            raise domain.DomainError("kinds 必须是字符串数组")
     for key in ("days", "max_docs"):
         val = flt.get(key)
         if val is not None and (not isinstance(val, int) or isinstance(val, bool) or val < 1):
