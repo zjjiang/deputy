@@ -1,12 +1,12 @@
 ## 1. Store 层（TDD：Red → Green）
 
-- [ ] 1.1 写 `tests/test_questions_store.py`（Red）：CRUD/id 生成 q1,q2/ord 递增、title/prompt 空 → DomainError、非法 cadence → DomainError、kinds 越界 → DomainError、filter 返回解析后 dict；跑 `uv run pytest -q tests/test_questions_store.py` 确认全红
-- [ ] 1.2 同文件补到期矩阵用例（Red）：active+从未跑→到期；daily 当天已跑→不到期；weekly 恰 7 天→到期；inactive 永不到期；manual 无请求→不到期；requested 非空无视 last_run_at；固定 NOW 常量注入
-- [ ] 1.3 同文件补 submit/版本化用例（Red）：首提 v1；同日再提 v2 且 v1 变 superseded 保留可查；跨日重新从 v1 计；提交后 last_run_at 更新+requested_at 清空（同事务）；空正文→DomainError；不存在→KeyError；停用→DomainError；remove 级联删 answers；标已读只影响单条；删不存在→KeyError
-- [ ] 1.4 `app/domain.py`：加 `VALID_CADENCES`/`CADENCE_PERIODS`/cadence 标签/answer 状态常量，`PROPOSAL_ACTIONS` 加 `add_question`、`edit_question`；跑 store 测试仍红（函数未实现）确认白名单不破坏现有 gate 测试
-- [ ] 1.5 `app/store/db.py`：SCHEMA 追加 questions/answers 两表（含 version 列、(question_id,run_date,version) 索引）+ 可选键白名单加 `kinds/domain/days/max_docs`（在 proposals.py）；跑 `uv run pytest -q` 确认除新用例外无回归
-- [ ] 1.6 写 `app/store/questions.py`（Green）：add/edit/remove/list_questions(now)/get_question/request_run/list_answers/mark_answer_read/delete_answer/submit_answer + questions._DISPATCH，到期判定与版本化按 spec；跑 `uv run pytest -q tests/test_questions_store.py` 全绿
-- [ ] 1.7 `app/store/proposals.py`：approve 按 action 归属派发（projects 或 questions 的 dispatch）；`tests/test_gate.py` 补用例：propose("add_question") → 真源未变且 pending+1；approve 后问题创建；cadence 非法时 approve 被拦保持 pending；reject 不创建；跑 `uv run pytest -q tests/test_gate.py` 全绿
+- [x] 1.1 写 `tests/test_questions_store.py`（Red）：CRUD/id 生成 q1,q2/ord 递增、title/prompt 空 → DomainError、非法 cadence → DomainError、kinds 越界 → DomainError、filter 返回解析后 dict；跑 `uv run pytest -q tests/test_questions_store.py` 确认全红
+- [x] 1.2 同文件补到期矩阵用例（Red）：active+从未跑→到期；daily 当天已跑→不到期；weekly 恰 7 天→到期；inactive 永不到期；manual 无请求→不到期；requested 非空无视 last_run_at；固定 NOW 常量注入
+- [x] 1.3 同文件补 submit/版本化用例（Red）：首提 v1；同日再提 v2 且 v1 变 superseded 保留可查；跨日重新从 v1 计；提交后 last_run_at 更新+requested_at 清空（同事务）；空正文→DomainError；不存在→KeyError；停用→DomainError；remove 级联删 answers；标已读只影响单条；删不存在→KeyError
+- [x] 1.4 `app/domain.py`：加 `VALID_CADENCES`/`CADENCE_PERIODS`/cadence 标签/answer 状态常量，`PROPOSAL_ACTIONS` 加 `add_question`、`edit_question`；跑 store 测试仍红（函数未实现）确认白名单不破坏现有 gate 测试
+- [x] 1.5 `app/store/db.py`：SCHEMA 追加 questions/answers 两表（含 version 列、(question_id,run_date,version) 索引）+ 可选键白名单加 `kinds/domain/days/max_docs`（在 proposals.py）；跑 `uv run pytest -q` 确认除新用例外无回归
+- [x] 1.6 写 `app/store/questions.py`（Green）：add/edit/remove/list_questions(now)/get_question/request_run/list_answers/mark_answer_read/delete_answer/submit_answer + questions._DISPATCH，到期判定与版本化按 spec；跑 `uv run pytest -q tests/test_questions_store.py` 全绿
+- [x] 1.7 `app/store/proposals.py`：approve 按 action 归属派发（projects 或 questions 的 dispatch）；`tests/test_gate.py` 补用例：propose("add_question") → 真源未变且 pending+1；approve 后问题创建；cadence 非法时 approve 被拦保持 pending；reject 不创建；跑 `uv run pytest -q tests/test_gate.py` 全绿
 
 ## 2. API 层（TDD：Red → Green）
 

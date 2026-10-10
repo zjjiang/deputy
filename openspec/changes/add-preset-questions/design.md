@@ -27,7 +27,7 @@
 `answers` 无 UNIQUE 约束，每次提交插入新行，`version` = 同题同日 max+1，同事务把同日旧行置 `superseded`。备选「UNIQUE + ON CONFLICT 覆盖」被否：销毁旧结论、已读状态连带丢失，且与 proposals 的 append-only 哲学相悖。代价：分身崩溃重试会产生近重复版本——接受（SOP 约束「仅在确有新料/新结论时提交」，看板永远展示最新版，噪音无害）。单用户场景不做版本合并/去重。
 
 **D4 门禁派发归位：questions 自带 _DISPATCH，approve 按 action 归属路由**
-新增动作 `add_question`/`edit_question` 的写函数与派发表在 `app/store/questions.py`；`proposals.approve` 按 action 归属派发到 projects 或 questions 的 dispatch（questions.dispatch 与 projects.dispatch 同构，`inspect.signature` 探测 `now` 参数的做法照抄）。备选「把题目动作塞进 projects._DISPATCH」被否：跨模块耦合，projects 不该知道 questions。`propose()` 的必填键校验沿用 `PROPOSAL_ACTIONS` 白名单；可选键白名单（现为 `items/done`）需加 `kinds/domain/days/max_docs`。
+新增动作 `add_question`/`edit_question` 的写函数与派发表在 `app/store/questions.py`；`proposals.approve` 按 action 归属派发（`questions.handles(action)` 判定），questions.dispatch 与 projects.dispatch 同构（`inspect.signature` 探测 `now` 参数的做法照抄）。备选「把题目动作塞进 projects._DISPATCH」被否：跨模块耦合，projects 不该知道 questions。`propose()` 的必填键校验沿用 `PROPOSAL_ACTIONS` 白名单即可——`add_question` 必填 `title/prompt`、`edit_question` 必填 `question_id`，其余键（cadence/filter 等）天然免检，无需动可选键豁免表。
 
 **D5 submit 边界行为：不存在 → KeyError(404)，停用 → DomainError(400)，空正文 → DomainError**
 停用意味着用户明确不想再要回答，拒收并让分身放弃；不存在照 `_require_project` 的 KeyError 措辞。提交与「推进 last_run_at + 清 requested_at」在同一写事务，避免「答了但题还挂着」的重复跑。

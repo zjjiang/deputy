@@ -165,3 +165,73 @@ def test_toggle_todo_undone_clears_done_at(fresh_db):
     assert projects.get_project("p1")["todos"][0]["done_at"] == "2026-07-23T12:00:00"
     projects.toggle_todo("p1", tid, done=False, now="2026-07-23T13:00:00")
     assert projects.get_project("p1")["todos"][0]["done_at"] is None
+
+
+# ---------- 预设问题的门禁动作（add_question / edit_question）----------
+
+NOW_Q = "2026-07-23T00:00:00+00:00"
+
+
+def test_add_question_via_gate(fresh_db):
+    from app.store import proposals, questions
+
+    proposals.propose(
+        "add_question",
+        {"title": "分身提的题", "prompt": "本周有什么动向?", "cadence": "weekly"},
+        reason="觉得该盯这个角度", now=NOW_Q,
+    )
+    assert questions.list_questions(NOW_Q) == []  # 提议不落地
+    pend = proposals.list_proposals("pending")
+    assert len(pend) == 1 and pend[0]["action"] == "add_question"
+    proposals.approve(pend[0]["id"], now=NOW_Q)
+    qs = questions.list_questions(NOW_Q)
+    assert len(qs) == 1
+    assert qs[0]["title"] == "分身提的题" and qs[0]["cadence"] == "weekly"
+    assert proposals.list_proposals("pending") == []
+
+
+def test_reject_question_proposal_does_not_create(fresh_db):
+    from app.store import proposals, questions
+
+    prop = proposals.propose(
+        "add_question", {"title": "t", "prompt": "p"}, reason="r", now=NOW_Q
+    )
+    proposals.reject(prop["id"], now=NOW_Q, note="不要")
+    assert questions.list_questions(NOW_Q) == []
+
+
+def test_add_question_illegal_value_rejected_on_approve(fresh_db):
+    from app.store import proposals, questions
+
+    prop = proposals.propose(
+        "add_question",
+        {"title": "x", "prompt": "p", "cadence": "hourly"},
+        reason="测试", now=NOW_Q,
+    )
+    with pytest.raises(Exception):
+        proposals.approve(prop["id"], now=NOW_Q)  # 派发被业务规则拦截
+    assert questions.list_questions(NOW_Q) == []  # 问题未创建
+    pend = proposals.list_proposals("pending")
+    assert len(pend) == 1 and pend[0]["id"] == prop["id"]  # 提议保持待批
+
+
+def test_add_question_missing_required_args_rejected_on_propose(fresh_db):
+    from app.store import proposals
+
+    with pytest.raises(Exception):
+        proposals.propose(
+            "add_question", {"title": "只有标题"}, reason="缺 prompt", now=NOW_Q
+        )
+
+
+def test_edit_question_via_gate(fresh_db):
+    from app.store import proposals, questions
+
+    q = questions.add_question("原题", "原prompt", now=NOW_Q)
+    prop = proposals.propose(
+        "edit_question", {"question_id": q["id"], "title": "改过的题"},
+        reason="时间窗放宽", now=NOW_Q,
+    )
+    assert questions.get_question(q["id"])["title"] == "原题"  # 未批准不生效
+    proposals.approve(prop["id"], now=NOW_Q)
+    assert questions.get_question(q["id"])["title"] == "改过的题"
