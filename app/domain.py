@@ -14,6 +14,20 @@ VALID_DRIVES: frozenset[str] = frozenset({"self", "assist", "auto"})
 VALID_KINDS: frozenset[str] = frozenset({"biz", "tool"})
 VALID_REORDER_POSITIONS: frozenset[str] = frozenset({"before", "after"})
 
+# ---- 预设问题 ----
+# 节奏：daily/weekly 到期走周期；manual 只看手动请求标记。
+VALID_CADENCES: frozenset[str] = frozenset({"daily", "weekly", "manual"})
+CADENCE_PERIODS: dict[str, int] = {"daily": 1, "weekly": 7}  # 天；manual 无周期
+CADENCE_LABELS: dict[str, str] = {"daily": "每天", "weekly": "每周", "manual": "手动"}
+# 回答状态：new(未读) → read(已读)；被同日新版本顶替 → superseded（保留可查）。
+VALID_ANSWER_STATUSES: frozenset[str] = frozenset({"new", "read", "superseded"})
+VALID_CONFIDENCES: frozenset[str] = frozenset({"high", "medium", "low"})
+# 问题过滤器白名单：kinds 本地校验；domain 是 feed-curator 侧不透明字符串；
+# days/max_docs 为正整数。
+VALID_QUESTION_FILTER_KEYS: frozenset[str] = frozenset(
+    {"kinds", "domain", "days", "max_docs"}
+)
+
 # 状态机：每个状态允许迁移到哪些状态。
 # 主线 spark→probe→attack→operate→maintain；任何状态都能被雪藏或归档；
 # 雪藏可解冻回验证/主攻；归档是终态（需 unarchive 专门放开）。
@@ -60,6 +74,9 @@ PROPOSAL_ACTIONS: dict[str, tuple[str, ...]] = {
     "rename_project": ("project_id", "name"),
     "add_to_backlog": ("text",),
     "reorder_project": ("project_id", "target_id", "position"),
+    # 预设问题：分身可提议建题/改题，用户批准后才落地（answers 不走门禁，见 spec）。
+    "add_question": ("title", "prompt"),
+    "edit_question": ("question_id",),
 }
 
 

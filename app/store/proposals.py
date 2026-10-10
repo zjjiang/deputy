@@ -13,6 +13,7 @@ from typing import Any
 
 from .. import domain
 from . import projects as proj
+from . import questions as qs
 from .db import get_conn, transaction
 
 
@@ -97,8 +98,10 @@ def approve(proposal_id: int, now: str) -> dict[str, Any]:
         row = _get_pending(conn, proposal_id)
         action = row["action"]
         args = json.loads(row["args"])
-    # 先执行（projects 层自带事务与规则校验），成功再落状态，避免"标了approved但没执行"。
-    result = proj.dispatch(action, args, now=now)
+    # 先执行（store 层自带事务与规则校验），成功再落状态，避免"标了approved但没执行"。
+    # 按动作归属路由：questions 的建/改题走 questions.dispatch，其余走 projects。
+    dispatcher = qs if qs.handles(action) else proj
+    result = dispatcher.dispatch(action, args, now=now)
     with transaction() as conn:
         conn.execute(
             "UPDATE proposals SET status = 'approved', decided = ? WHERE id = ?",

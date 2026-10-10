@@ -146,6 +146,33 @@
   .bl-item{grid-column:1/-1;background:var(--surface);border:1px solid var(--line);
     border-radius:7px;padding:9px 14px;font-size:14px;display:flex;gap:10px;align-items:baseline}
   .bl-item .s{color:var(--faint);font-size:11px;font-family:var(--mono);margin-left:auto}
+
+  /* 预设问题 */
+  .kind-badge.hot{color:#fff;background:var(--accent);border-color:var(--accent)}
+  .q-prompt{color:var(--dim);font-size:13px;cursor:pointer;margin:2px 0 7px}
+  .q-meta{color:var(--faint);font-size:12px;font-family:var(--mono)}
+  .q-answers{margin-top:10px;border-top:1px dashed var(--line);padding-top:9px;
+    display:grid;gap:9px}
+  .ans{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px 12px}
+  .ans.sup{opacity:.62}
+  .ans-head{display:flex;align-items:baseline;gap:7px;margin-bottom:5px}
+  .ans-badge{font-family:var(--mono);font-size:11px;color:var(--accent);
+    background:var(--accent-soft);border-radius:4px;padding:0 6px;line-height:17px}
+  .ans-badge.c-high{color:var(--s-cash);background:transparent;border:1px solid var(--s-cash)}
+  .ans-badge.c-medium{color:var(--warning);background:transparent;border:1px solid var(--warning)}
+  .ans-badge.c-low{color:var(--s-attack);background:transparent;border:1px solid var(--s-attack)}
+  .ans-meta{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .ans-body{white-space:pre-wrap;font-size:13.5px;color:var(--ink);word-break:break-word}
+  .ans-body.sup{color:var(--dim)}
+  .srcs{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .src{font-size:11.5px;color:var(--accent);background:var(--surface);
+    border:1px solid var(--line);border-radius:4px;padding:1px 7px;text-decoration:none;
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .src:hover{border-color:var(--accent)}
+  .ans-ops{margin-top:7px;display:flex;gap:8px}
+  .sup-details summary{cursor:pointer;font-size:11.5px;color:var(--faint);font-family:var(--mono)}
+  .sup-details{margin-top:5px}
+
   footer{grid-column:1/-1;color:var(--faint);font-size:11px;text-align:center;
     padding-top:10px;font-family:var(--mono)}
 </style>
@@ -166,17 +193,23 @@ const CASH = new Set(["maintain"]);
 // 纯文字状态名，无 emoji
 const STAGES = {spark:"火花",probe:"验证",attack:"主攻",operate:"运营",
                 maintain:"维护",frozen:"雪藏",archived:"归档"};
-const TABS = [["board","全盘"],["gate","门禁"],["backlog","需求池"]];
+const TABS = [["board","全盘"],["gate","门禁"],["questions","问题"],["backlog","需求池"]];
 window._tab = window._tab || "board";
 window._state = null; window._props = [];
+window._questions = []; window._openQ = null; window._answers = null;
 
 async function load(){
   try{
-    const [s, props] = await Promise.all([
+    const [s, props, qs] = await Promise.all([
       fetch("/api/state").then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}),
-      fetch("/api/proposals?status=").then(r=>r.ok?r.json():[])
+      fetch("/api/proposals?status=").then(r=>r.ok?r.json():[]),
+      fetch("/api/questions").then(r=>r.ok?r.json():[])
     ]);
-    window._state = s; window._props = props;
+    window._state = s; window._props = props; window._questions = qs;
+    // 展开中的问题：每次轮询顺带刷新其回答（保持版本/未读最新）
+    window._answers = window._openQ
+      ? await fetch(`/api/question/${window._openQ}/answers`).then(r=>r.ok?r.json():[])
+      : null;
     render();
   }catch(e){
     document.getElementById("board").innerHTML =
@@ -214,21 +247,49 @@ function editTrigger(pid,old){ const t=prompt("解冻扳机（满足什么条件
 function archive(pid,ev){ ev.stopPropagation(); if(confirm("归档这个项目？（可恢复）")) post(`/api/project/${pid}/archive`); }
 function addBacklog(){ const el=document.getElementById("bl-in"); const t=el.value;
   if(t&&t.trim()) post("/api/backlog/add",{text:t}); }
+// 预设问题
+function addQuestion(){
+  const t=prompt("问题标题（看板上显示的名字）："); if(!t||!t.trim())return;
+  const p=prompt("问题内容（给 AI 的完整问题，可含关注角度）："); if(!p||!p.trim())return;
+  const c=prompt("节奏 daily / weekly / manual：","daily");
+  post("/api/question/add",{title:t.trim(),prompt:p.trim(),cadence:(c||"daily").trim()});
+}
+function editQuestion(qid){
+  const q=(window._questions||[]).find(x=>x.id===qid); if(!q)return;
+  const t=prompt("标题：",q.title); if(t===null)return;
+  const p=prompt("问题内容：",q.prompt); if(p===null)return;
+  const c=prompt("节奏 daily/weekly/manual：",q.cadence); if(c===null)return;
+  post(`/api/question/${qid}/edit`,{title:t.trim(),prompt:p.trim(),cadence:c.trim()||q.cadence});
+}
+function runQuestion(qid){ post(`/api/question/${qid}/run`); }
+function toggleActive(qid,cur){ post(`/api/question/${qid}/active`,{active:!cur}); }
+function removeQuestion(qid){ if(confirm("删除这个问题及其全部回答？")) post(`/api/question/${qid}/remove`); }
+function readAnswer(aid){ post(`/api/answer/${aid}/read`); }
+function delAnswer(aid){ if(confirm("删除这条回答？")) post(`/api/answer/${aid}/delete`); }
+function openQuestion(qid){
+  window._openQ = window._openQ===qid ? null : qid;
+  window._answers = null;
+  render();
+  if(window._openQ) load();  // 按需拉取该题回答
+}
 
 function render(){
   const s = window._state; if(!s) return;
   const props = window._props || [];
   const pend = props.filter(p=>p.status==="pending");
+  const unread = (window._questions||[]).reduce((n,q)=>n+(q.unread_count||0),0);
 
   document.getElementById("tabs").innerHTML = TABS.map(([k,label])=>{
-    const count = k==="gate" && pend.length
-      ? `<span class="count hot">${pend.length}</span>` : "";
+    let count = "";
+    if(k==="gate" && pend.length) count = `<span class="count hot">${pend.length}</span>`;
+    else if(k==="questions" && unread) count = `<span class="count hot">${unread}</span>`;
     return `<div class="tab ${k===window._tab?'on':''}" onclick="setTab('${k}')">${label}${count}</div>`;
   }).join("");
 
   let h = "";
   if(window._tab==="gate") h = renderGate(pend, props);
   else if(window._tab==="board") h = renderBoard(s);
+  else if(window._tab==="questions") h = renderQuestions();
   else h = renderBacklog(s);
   h += `<footer>更新于 ${new Date().toLocaleTimeString()} · 唯一真源 SQLite · 网页与分身同一份数据</footer>`;
   document.getElementById("board").innerHTML = h;
@@ -351,13 +412,86 @@ function renderBacklog(s){
   return h;
 }
 
+// ---------- 预设问题 ----------
+
+const CADENCE_LABELS = {daily:"每天", weekly:"每周", manual:"手动"};
+function dueLabel(r){return {["first-run"]:"首次", scheduled:"超期", ["manual-request"]:"手动"}[r]||r;}
+
+function renderQuestions(){
+  const qs = window._questions||[];
+  let h = `<div class="overview">
+    <span class="ov">预设问题 · 分身按节奏跑题，回答落在这里</span>
+    <span style="margin-left:auto"><button class="act" onclick="addQuestion()">＋ 新建问题</button></span></div>`;
+  if(!qs.length){
+    h += `<div class="empty"><div class="lead">还没有预设问题</div>
+      建一个「要 AI 持续关注什么」的问题，分身会定期基于 feed-curator 思考，把带引用来源的回答送来这里。
+      同一天有新料再跑会生成新版本，旧版保留可查。</div>`;
+    return h;
+  }
+  for(const q of qs){
+    const due = q.due ? `<span class="kind-badge hot">待跑 · ${esc(dueLabel(q.due_reason))}</span>` : "";
+    const unread = q.unread_count ? `<span class="kind-badge hot">${q.unread_count} 条未读</span>` : "";
+    const active = q.active ? "" : `<span class="kind-badge">已停用</span>`;
+    const last = q.last_run_at ? esc(q.last_run_at.slice(5,16).replace("T"," ")) : "从未";
+    h += `<div class="card" id="card-${esc(q.id)}">
+      <div class="head">
+        <span class="name" onclick="openQuestion('${esc(q.id)}')">${esc(q.title)}</span>
+        <span class="kind-badge">${CADENCE_LABELS[q.cadence]||esc(q.cadence)}</span>
+        ${due}${unread}${active}
+        <span style="margin-left:auto"></span>
+        <span class="act" onclick="runQuestion('${esc(q.id)}')">跑一次</span>
+        <span class="act" onclick="editQuestion('${esc(q.id)}')">编辑</span>
+        <span class="act" onclick="toggleActive('${esc(q.id)}',${q.active})">${q.active?"停用":"启用"}</span>
+        <span class="act" onclick="removeQuestion('${esc(q.id)}')">删除</span>
+      </div>
+      <div class="q-prompt" onclick="openQuestion('${esc(q.id)}')">${esc(q.prompt)}</div>
+      <div class="q-meta">上次运行 ${last}${q.preview?` · ${esc(q.preview)}…`:""}</div>
+      ${window._openQ===q.id ? renderAnswers(q) : ""}
+    </div>`;
+  }
+  return h;
+}
+
+function renderAnswers(){
+  const answers = window._answers;
+  if(!answers) return `<div class="q-answers"><div class="empty-todo">加载中…</div></div>`;
+  if(!answers.length) return `<div class="q-answers"><div class="empty-todo">还没有回答。点「跑一次」让分身来跑。</div></div>`;
+  return `<div class="q-answers">` + answers.map(a=>{
+    const sup = a.status==="superseded";
+    const conf = a.confidence ? `<span class="ans-badge c-${escAttr(a.confidence)}">${esc(a.confidence)}</span>` : "";
+    const head = `<div class="ans-head"><span class="ans-badge">v${a.version}</span>${conf}
+      <span class="ans-meta">${esc(a.model||"")}${a.created?` · ${esc(a.created.slice(5,16).replace("T"," "))}`:""}${a.status==="read"?" · 已读":""}</span></div>`;
+    const srcs = (a.sources||[]).map(s=>{
+      const u = safeUrl(s.url);
+      return u ? `<a class="src" href="${escAttr(u)}" target="_blank" rel="noopener">${esc(s.title||s.url)}</a>` : "";
+    }).join("");
+    if(sup){
+      return `<div class="ans sup">${head}
+        <details class="sup-details"><summary>v${a.version} · 已被新版本顶替，展开查看</summary>
+          <div class="ans-body sup">${esc(a.body_md)}</div>${srcs?`<div class="srcs">${srcs}</div>`:""}
+        </details></div>`;
+    }
+    return `<div class="ans">${head}
+      <div class="ans-body">${esc(a.body_md)}</div>${srcs?`<div class="srcs">${srcs}</div>`:""}
+      <div class="ans-ops">
+        ${a.status==="new"?`<span class="act" onclick="readAnswer(${a.id})">标已读</span>`:""}
+        <span class="act" onclick="delAnswer(${a.id})">删除</span>
+      </div></div>`;
+  }).join("") + `</div>`;
+}
+
 function actionLabel(a){return {
   set_focus:"更新此刻聚焦", add_todo:"加一条 todo", toggle_todo:"勾选/取消 todo",
   edit_todo:"修改 todo", remove_todo:"删除 todo", set_stage:"改变项目状态",
   set_drive:"改变谁在推", set_kind:"改变项目类型", set_trigger:"设置解冻扳机",
   add_project:"新建项目", rename_project:"项目改名", add_to_backlog:"丢想法进需求池",
-  reorder_project:"调整项目排序"}[a]||a;}
+  reorder_project:"调整项目排序", add_question:"新建预设问题",
+  edit_question:"调整预设问题"}[a]||a;}
 function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
+// 属性上下文转义（esc 不转义引号；href/style 等属性值必须用它）
+function escAttr(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+// 来源链接是模型生成内容，仅放行 http(s) 协议，防 javascript: 注入
+function safeUrl(u){ const s=String(u||"").trim(); return /^https?:\/\//i.test(s)?s:""; }
 // 供双引号 onclick 内安全传字符串参数：先做成单引号 JS 字符串字面量，再 HTML 转义
 function jq(s){
   const lit = "'" + String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\n/g,"\\n") + "'";

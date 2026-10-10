@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import domain
-from .store import db, projects, proposals
+from .store import db, projects, proposals, questions
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 
@@ -223,6 +223,89 @@ def project_delete(project_id: str) -> dict[str, Any]:
 @app.post("/api/backlog/add")
 def backlog_add(b: BacklogAdd) -> dict[str, Any]:
     return _guard(lambda: projects.add_to_backlog(b.text))
+
+
+# ---------- 预设问题（你在看板上管理；回答由分身经 MCP 回填）----------
+
+class QuestionAdd(BaseModel):
+    title: str
+    prompt: str
+    cadence: str = "daily"
+    filter: dict[str, Any] = {}
+
+
+class QuestionEdit(BaseModel):
+    title: str | None = None
+    prompt: str | None = None
+    cadence: str | None = None
+    filter: dict[str, Any] | None = None
+
+
+class QuestionActive(BaseModel):
+    active: bool
+
+
+@app.get("/api/questions")
+def list_questions() -> list[dict[str, Any]]:
+    """看板聚合视图：每题附 due/unread_count/last_answer_at/preview（不带正文）。"""
+    return _guard(lambda: questions.list_questions_overview(_now()))
+
+
+@app.post("/api/question/add")
+def question_add(b: QuestionAdd) -> dict[str, Any]:
+    return _guard(
+        lambda: questions.add_question(
+            b.title, b.prompt, filter=b.filter, cadence=b.cadence, now=_now()
+        )
+    )
+
+
+@app.post("/api/question/{question_id}/edit")
+def question_edit(question_id: str, b: QuestionEdit) -> dict[str, Any]:
+    return _guard(
+        lambda: questions.edit_question(
+            question_id,
+            title=b.title, prompt=b.prompt, cadence=b.cadence, filter=b.filter,
+            now=_now(),
+        )
+    )
+
+
+@app.post("/api/question/{question_id}/remove")
+def question_remove(question_id: str) -> dict[str, Any]:
+    return _guard(lambda: questions.remove_question(question_id))
+
+
+@app.post("/api/question/{question_id}/run")
+def question_run(question_id: str) -> dict[str, Any]:
+    """手动「跑一次」：打请求标记，分身下轮轮询取走。"""
+    return _guard(lambda: questions.request_run(question_id, now=_now()))
+
+
+@app.post("/api/question/{question_id}/active")
+def question_active(question_id: str, b: QuestionActive) -> dict[str, Any]:
+    return _guard(lambda: questions.set_question_active(question_id, b.active))
+
+
+@app.get("/api/question/{question_id}/answers")
+def question_answers(question_id: str, limit: int = 30) -> list[dict[str, Any]]:
+    """某题的全部版本（含 superseded），新的在前。先验问题存在（404）。"""
+
+    def _load() -> list[dict[str, Any]]:
+        questions.get_question(question_id)  # 不存在 → KeyError → 404
+        return questions.list_answers(question_id, limit)
+
+    return _guard(_load)
+
+
+@app.post("/api/answer/{answer_id}/read")
+def answer_read(answer_id: int) -> dict[str, Any]:
+    return _guard(lambda: questions.mark_answer_read(answer_id, now=_now()))
+
+
+@app.post("/api/answer/{answer_id}/delete")
+def answer_delete(answer_id: int) -> dict[str, Any]:
+    return _guard(lambda: questions.delete_answer(answer_id))
 
 
 # ---------- 静态看板 ----------
