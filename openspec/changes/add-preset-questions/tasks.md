@@ -25,6 +25,6 @@
 
 ## 5. 文档与收尾
 
-- [ ] 5.1 写 `docs/thinking-sop.md`：分身跑题 SOP（取料→初答自检→至多一次补料→定稿；无料日降级；增量回答规则；版本提交纪律）+ OpenClaw cron prompt 模板 + mini 侧运维前置（feed-curator 服务、可选 DEEPSEEK key + analyze）
-- [ ] 5.2 CLAUDE.md：红线①措辞精确化（真源=projects/todos/backlog/focus；answers 为派生物走专属工具）+ 架构速览 store 清单加 questions.py + 标语加 answers 例外；`app/mcp_server.py` 模块 docstring 同步
-- [ ] 5.3 全量回归：`uv run pytest -q` 全绿（38 旧 + 新增用例，含 9 工具契约与守门测试）；`openspec validate add-preset-questions` 通过
+- [x] 5.1 写 `docs/thinking-sop.md`：分身跑题 SOP（取料→初答自检→至多一次补料→定稿；无料日降级；增量回答规则；版本提交纪律）+ OpenClaw cron prompt 模板 + mini 侧运维前置（feed-curator 服务、可选 DEEPSEEK key + analyze）
+- [x] 5.2 CLAUDE.md：红线①措辞精确化（真源=projects/todos/backlog/focus；answers 为派生物走专属工具）+ 架构速览 store 清单加 questions.py + 标语加 answers 例外；`app/mcp_server.py` 模块 docstring 同步
+- [x] 5.3 全量回归：`uv run pytest -q` 全绿（38 旧 + 新增用例，含 9 工具契约与守门测试）；`openspec validate add-preset-questions` 通过
