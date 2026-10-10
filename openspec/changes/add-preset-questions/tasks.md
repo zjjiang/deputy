@@ -15,8 +15,8 @@
 
 ## 3. MCP 层（TDD：Red → Green）
 
-- [ ] 3.1 `tests/test_mcp_contract.py`：精确集合断言更新为 9 工具（+list_questions/get_question/submit_answer）（Red）；补分身视角端到端：list_questions 取到到期题 → submit_answer → get_question 的最近回答可见（Red）；确认 `test_mcp_has_no_direct_write_tools` 对新白名单自动生效且绿
-- [ ] 3.2 `app/mcp_server.py`（Green）：三个新工具 + docstring（到期语义/增量回答/提交纪律摘要，指向 docs/thinking-sop.md）；submit_answer 的 run_date 缺省按东八区算；跑 `uv run pytest -q tests/test_mcp_contract.py` 全绿
+- [x] 3.1 `tests/test_mcp_contract.py`：精确集合断言更新为 9 工具（+list_questions/get_question/submit_answer）（Red）；补分身视角端到端：list_questions 取到到期题 → submit_answer → get_question 的最近回答可见（Red）；确认 `test_mcp_has_no_direct_write_tools` 对新白名单自动生效且绿
+- [x] 3.2 `app/mcp_server.py`（Green）：三个新工具 + docstring（到期语义/增量回答/提交纪律摘要，指向 docs/thinking-sop.md）；submit_answer 的 run_date 缺省按东八区算；跑 `uv run pytest -q tests/test_mcp_contract.py` 全绿
 
 ## 4. 前端
 
