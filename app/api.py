@@ -417,12 +417,14 @@ def intel_docs(
     page: int = Query(1, ge=1),
     domain_id: int | None = Query(None),
     kind: str | None = Query(None),
+    kind_tag: str | None = Query(None),
     min_stars: int | None = Query(None, ge=1, le=5),
     sort: str | None = Query(None, pattern="^(time|stars)$"),
 ) -> dict[str, Any]:
     """语料流（feed-curator GET /api/docs 的代理，响应原样透传）。"""
     return _intel(lambda: curator.list_docs(
-        domain_id=domain_id, kind=kind, min_stars=min_stars, sort=sort, page=page,
+        domain_id=domain_id, kind=kind, kind_tag=kind_tag,
+        min_stars=min_stars, sort=sort, page=page,
     ))
 
 

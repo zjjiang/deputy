@@ -52,6 +52,17 @@ def test_intel_docs_proxy(client, fake_curator):
     assert call["page"] == 2
 
 
+def test_intel_docs_kind_tag_passthrough(client, fake_curator):
+    """文章子类（技术/商业）筛选参数原样透传 feed-curator。"""
+    r = client.get("/api/intel/docs", params={"kind": "article", "kind_tag": "tech"})
+    assert r.status_code == 200
+    call = fake_curator["list_docs"]
+    assert call["kind"] == "article" and call["kind_tag"] == "tech"
+    # 不传时端点侧为 None（不发空参数由 curator 层 _clean 保证，见 test_curator.py）
+    client.get("/api/intel/docs")
+    assert fake_curator["list_docs"]["kind_tag"] is None
+
+
 def test_intel_docs_invalid_min_stars_422(client):
     """越界门槛走 FastAPI 原生校验（与 feed-curator 侧同款 422）。"""
     assert client.get("/api/intel/docs", params={"min_stars": 9}).status_code == 422
