@@ -191,6 +191,14 @@
   .sup-details summary{cursor:pointer;font-size:11.5px;color:var(--faint);font-family:var(--mono)}
   .sup-details{margin-top:5px}
 
+  /* 情报流类型配色（对齐 feed-curator：论文蓝/GitHub项目绿/资讯橙） */
+  .kind-badge.kind-paper{background:#e8eef7;color:#2b5aa8;border-color:#e8eef7}
+  .kind-badge.kind-repo{background:#e9f3e8;color:#2e7d32;border-color:#e9f3e8}
+  .kind-badge.kind-article{background:#f4ece2;color:#9a5b1f;border-color:#f4ece2}
+  .star-row{font-size:12.5px;color:#faad14;white-space:nowrap;letter-spacing:1px}
+  .star-row .off{color:var(--line-strong)}
+  .kind-badge.gh-stars{background:#eef4ee;color:#1b5e20;font-weight:600}
+
   footer{grid-column:1/-1;color:var(--faint);font-size:11px;text-align:center;
     padding-top:10px;font-family:var(--mono)}
 </style>
@@ -221,7 +229,7 @@ window._state = null; window._props = [];
 window._questions = []; window._openQ = null; window._answers = null;
 window._learning = []; window._openL = null; window._learningDetail = null;
 window._intel = {loaded:false, degraded:false, loading:false, rows:[], total:0,
-                 page:1, filters:{domain_id:"", kind:"", min_stars:false, sort:"time"},
+                 page:1, filters:{domain_id:"", kind:"", kind_tag:"", min_stars:false, sort:"time"},
                  domains:[]};
 
 async function load(){
@@ -650,7 +658,8 @@ function renderLearningDetail(){
 
 // ---------- 军情处·翻阅（情报流） ----------
 
-const INTEL_KINDS = {article:"文章", paper:"论文", repo:"仓库"};
+const INTEL_KINDS = {article:"资讯", paper:"论文", repo:"GitHub项目"};
+const INTEL_KIND_CLS = {article:"kind-article", paper:"kind-paper", repo:"kind-repo"};
 
 async function loadIntel(){
   const I = window._intel;
@@ -658,6 +667,7 @@ async function loadIntel(){
   const f = I.filters, p = new URLSearchParams();
   if(f.domain_id) p.set("domain_id", f.domain_id);
   if(f.kind) p.set("kind", f.kind);
+  if(f.kind_tag) p.set("kind_tag", f.kind_tag);
   if(f.min_stars) p.set("min_stars", "4");
   if(f.sort && f.sort!=="time") p.set("sort", f.sort);
   p.set("page", I.page);
@@ -674,6 +684,13 @@ async function loadIntel(){
   render();
 }
 function intelFilter(k, v){ window._intel.filters[k] = v; window._intel.page = 1; loadIntel(); }
+// 切类型时对齐 feed-curator 行为：离开「资讯」即清空子类筛选
+function intelKind(v){
+  const f = window._intel.filters;
+  f.kind = v;
+  if(v && v!=="article") f.kind_tag = "";
+  window._intel.page = 1; loadIntel();
+}
 function intelToggleMinStars(cb){ window._intel.filters.min_stars = cb.checked; window._intel.page = 1; loadIntel(); }
 function intelPage(d){
   const np = window._intel.page + d;
@@ -704,9 +721,15 @@ function renderIntel(){
     `<option value="${d.id}" ${String(f.domain_id)===String(d.id)?"selected":""}>${esc(d.name)}</option>`)).join("");
   const kindOpts = ['<option value="">全部类型</option>'].concat(Object.entries(INTEL_KINDS).map(([k,v])=>
     `<option value="${k}" ${f.kind===k?"selected":""}>${v}</option>`)).join("");
+  // 子类（技术/商业）只对文章有意义；选了论文/GitHub项目时隐藏并对齐 feed-curator 行为
+  const showTagSel = !f.kind || f.kind==="article";
+  const tagOpts = ['<option value="">全部子类</option>',
+    `<option value="tech" ${f.kind_tag==="tech"?"selected":""}>技术</option>`,
+    `<option value="business" ${f.kind_tag==="business"?"selected":""}>商业</option>`].join("");
   h += `<div class="overview" style="gap:9px">
     <select class="stage-sel" onchange="intelFilter('domain_id', this.value)">${domOpts}</select>
-    <select class="stage-sel" onchange="intelFilter('kind', this.value)">${kindOpts}</select>
+    <select class="stage-sel" onchange="intelKind(this.value)">${kindOpts}</select>
+    ${showTagSel?`<select class="stage-sel" onchange="intelFilter('kind_tag', this.value)">${tagOpts}</select>`:""}
     <label style="font-size:12.5px;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:5px">
       <input type="checkbox" ${f.min_stars?"checked":""} onchange="intelToggleMinStars(this)">仅四星</label>
     <select class="stage-sel" onchange="intelFilter('sort', this.value)">
@@ -717,15 +740,20 @@ function renderIntel(){
   const rows = I.rows||[];
   if(!rows.length) return h + `<div class="empty"><div class="lead">没有匹配的情报</div>换个筛选条件试试。</div>`;
   h += `<div class="list">` + rows.map(d=>{
-    const st = d.stars ? `<span class="kind-badge hot">${d.stars} 星</span>` : `<span class="kind-badge">未判定</span>`;
+    const st = d.stars
+      ? `<span class="star-row" title="${d.stars} 星">${"★".repeat(d.stars)}<span class="off">${"☆".repeat(5-d.stars)}</span></span>`
+      : `<span class="kind-badge">未判定</span>`;
     const doms = (d.domains||[]).map(x=>`<span class="kind-badge">${esc(x)}</span>`).join("");
-    const kindB = `<span class="kind-badge">${INTEL_KINDS[d.kind]||esc(d.kind)}</span>`;
+    const kindB = `<span class="kind-badge ${INTEL_KIND_CLS[d.kind]||""}">${INTEL_KINDS[d.kind]||esc(d.kind)}</span>`;
+    const tagB = d.kind_tag ? `<span class="kind-badge">${d.kind_tag==="tech"?"技术":"商业"}</span>` : "";
+    const gh = (d.kind==="repo" && d.gh_stars)
+      ? `<span class="kind-badge gh-stars" title="GitHub 星标${d.gh_stars_gained>0?`（近期 +${d.gh_stars_gained}）`:""}">★ ${d.gh_stars}</span>` : "";
     const mark = (field,label)=>`<span class="act" onclick="intelMark(${d.id},'${field}')">${d[field]?"✓ ":""}${label}</span>`;
     return `<div class="card">
       <div class="head">
         <a class="name" href="${escAttr(safeUrl(d.url))}" target="_blank" rel="noopener"
            style="text-decoration:none;color:var(--ink);font-weight:600">${esc(d.title)}</a>
-        ${kindB}${st}${doms}
+        ${kindB}${tagB}${st}${gh}${doms}
         <span style="margin-left:auto"></span>
         ${mark("is_read","已读")}${mark("is_favorite","收藏")}
       </div>

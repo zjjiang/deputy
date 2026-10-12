@@ -43,7 +43,19 @@ def test_list_docs_omits_none_params():
     curator.list_docs(client=_mk(handler))
     url = captured["url"]
     assert "domain_id" not in url and "min_stars" not in url
+    assert "kind_tag" not in url
     assert "offset=0" in url and "limit=30" in url
+
+
+def test_list_docs_forwards_kind_tag():
+    captured = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        captured["url"] = str(req.url)
+        return httpx.Response(200, json={"total": 0, "docs": []})
+
+    curator.list_docs(kind="article", kind_tag="tech", client=_mk(handler))
+    assert "kind=article" in captured["url"] and "kind_tag=tech" in captured["url"]
 
 
 def test_domains_passthrough():

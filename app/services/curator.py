@@ -54,6 +54,7 @@ def list_docs(
     *,
     domain_id: int | None = None,
     kind: str | None = None,
+    kind_tag: str | None = None,
     min_stars: int | None = None,
     sort: str | None = None,
     page: int = 1,
@@ -68,6 +69,7 @@ def list_docs(
         params=_clean({
             "domain_id": domain_id,
             "kind": kind,
+            "kind_tag": kind_tag,
             "min_stars": min_stars,
             "sort": sort,
             "limit": per_page,
