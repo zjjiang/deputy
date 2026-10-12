@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 from mcp.server.fastmcp import FastMCP
 
 from . import domain
-from .store import db, projects, proposals, questions
+from .store import db, learning, projects, proposals, questions
 
 mcp = FastMCP("deputy")
 
@@ -106,6 +106,47 @@ def submit_answer(
         run_date=run_date or _today_cn(),
         now=_now(),
         meta=meta,
+    )
+
+
+# ============ 讲武堂（学习）：备课读面 + 课后小结直落 ============
+# track/大纲/自评状态的写一律走 propose 门禁（add_track/set_curriculum/set_point_status），
+# 这里【故意】不给直写工具。AI 不得自评用户掌握程度——那三个字必须用户亲口说。
+
+@mcp.tool()
+def get_learning(track_id: str | None = None, with_notes: int = 3) -> dict | list[dict]:
+    """【讲武堂】备课入口。不传 track_id：返回全部进行中(active)的主题，
+    含知识点、进度计数与下一课（todo 队首优先，无 todo 则回炉 revisit 优先）。
+    传 track_id：返回单主题详情，附最近 with_notes 条课程小结。
+
+    上课流程见 docs/teaching-sop.md：取下一课 → 讲解（自身知识为主，互联网/语料
+    佐证）→ 引导用户自评 → 用户说「懂了」时 propose("set_point_status") 代写 →
+    submit_lesson_note 存小结。
+    """
+    if track_id:
+        return learning.get_track(track_id, with_notes=max(0, with_notes))
+    tracks = [t for t in learning.list_tracks() if t["status"] == "active"]
+    return tracks
+
+
+@mcp.tool()
+def submit_lesson_note(
+    track_id: str,
+    point_title: str,
+    body_md: str,
+    sources: list[dict[str, Any]] | None = None,
+    model: str = "",
+) -> dict:
+    """【讲武堂】课后小结直落（派生物，不经门禁）：追加式，存知识点标题快照。
+
+    提交纪律（详见 docs/teaching-sop.md）：
+      - 一课一条；正文含要点回顾，素材来源如实声明（自身知识/互联网/语料引用）
+      - sources: [{title, url}...]——本课实际引用的材料
+      - point_title 用大纲里的知识点标题原文（快照用途，别改写）
+      - 这是小结不是讲义全文——讲解发生在对话里，落库的是要点存档
+    """
+    return learning.submit_lesson_note(
+        track_id, point_title, body_md, sources=sources, model=model, now=_now()
     )
 
 

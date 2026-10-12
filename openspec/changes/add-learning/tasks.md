@@ -15,8 +15,8 @@
 
 ## 3. MCP 层（TDD：Red → Green）
 
-- [ ] 3.1 `tests/test_mcp_contract.py`：精确集合 9→11（+get_learning/submit_lesson_note）（Red）；教学端到端：get_learning 取下一课 → submit_lesson_note → 小结可见（Red）；确认无直写工具测试对新白名单自动生效
-- [ ] 3.2 `app/mcp_server.py`（Green）：两个新工具 + docstring（下一课语义/小结纪律，指向 docs/teaching-sop.md）；跑 `pytest tests/test_mcp_contract.py` 全绿
+- [x] 3.1 `tests/test_mcp_contract.py`：精确集合 9→11（+get_learning/submit_lesson_note）（Red）；教学端到端：get_learning 取下一课 → submit_lesson_note → 小结可见（Red）；确认无直写工具测试对新白名单自动生效
+- [x] 3.2 `app/mcp_server.py`（Green）：两个新工具 + docstring（下一课语义/小结纪律，指向 docs/teaching-sop.md）；跑 `pytest tests/test_mcp_contract.py` 全绿
 
 ## 4. 前端
 
