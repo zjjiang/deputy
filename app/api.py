@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import domain
-from .store import db, projects, proposals, questions
+from .store import db, learning, projects, proposals, questions
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
 
@@ -306,6 +306,89 @@ def answer_read(answer_id: int) -> dict[str, Any]:
 @app.post("/api/answer/{answer_id}/delete")
 def answer_delete(answer_id: int) -> dict[str, Any]:
     return _guard(lambda: questions.delete_answer(answer_id))
+
+
+# ---------- 讲武堂（学习）：你管主题/大纲/自评；课程小结由分身经 MCP 直落 ----------
+
+class TrackAdd(BaseModel):
+    title: str
+    goal: str
+
+
+class TrackEdit(BaseModel):
+    title: str | None = None
+    goal: str | None = None
+
+
+class TrackStatus(BaseModel):
+    status: str
+
+
+class CurriculumSet(BaseModel):
+    points: list[dict[str, Any]]
+
+
+class PointStatus(BaseModel):
+    status: str
+
+
+@app.get("/api/learning")
+def list_learning() -> list[dict[str, Any]]:
+    """track 概览：进度计数 + 下一课。"""
+    return learning.list_tracks()
+
+
+@app.get("/api/learning/{track_id}")
+def get_learning(track_id: str, notes: int = 10) -> dict[str, Any]:
+    """track 详情：知识点 + 进度 + 下一课 + 最近课程小结。"""
+    return _guard(lambda: learning.get_track(track_id, with_notes=notes))
+
+
+@app.get("/api/learning/{track_id}/notes")
+def learning_notes(track_id: str, limit: int = 30) -> list[dict[str, Any]]:
+    """某 track 的课程小结（新的在前）。先验主题存在（404）。"""
+
+    def _load() -> list[dict[str, Any]]:
+        learning.get_track(track_id)
+        return learning.list_notes(track_id, limit)
+
+    return _guard(_load)
+
+
+@app.post("/api/learning/track/add")
+def track_add(b: TrackAdd) -> dict[str, Any]:
+    return _guard(lambda: learning.add_track(b.title, b.goal, now=_now()))
+
+
+@app.post("/api/learning/track/{track_id}/edit")
+def track_edit(track_id: str, b: TrackEdit) -> dict[str, Any]:
+    return _guard(
+        lambda: learning.edit_track(
+            track_id, title=b.title, goal=b.goal, now=_now()
+        )
+    )
+
+
+@app.post("/api/learning/track/{track_id}/remove")
+def track_remove(track_id: str) -> dict[str, Any]:
+    return _guard(lambda: learning.remove_track(track_id))
+
+
+@app.post("/api/learning/track/{track_id}/status")
+def track_status(track_id: str, b: TrackStatus) -> dict[str, Any]:
+    return _guard(lambda: learning.set_track_status(track_id, b.status))
+
+
+@app.post("/api/learning/track/{track_id}/curriculum")
+def track_curriculum(track_id: str, b: CurriculumSet) -> dict[str, Any]:
+    """用户直接设大纲（自己拍板不走门禁）；分身的版本走 set_curriculum 提议。"""
+    return _guard(lambda: learning.set_curriculum(track_id, b.points, now=_now()))
+
+
+@app.post("/api/learning/point/{point_id}/status")
+def point_status(point_id: str, b: PointStatus) -> dict[str, Any]:
+    """用户自评（懂了/没懂/重置）。分身代写走门禁，不经这里。"""
+    return _guard(lambda: learning.set_point_status(point_id, b.status, now=_now()))
 
 
 # ---------- 静态看板 ----------

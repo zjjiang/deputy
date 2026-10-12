@@ -1,8 +1,9 @@
 # deputy · 项目开发约定
 
 > 二号位 —— 一人公司的 AI 决策中枢。核心：**备料 → 门禁 → 释放**。
-> 分身只能提议，用户批准后才落到真源（唯一例外：预设问题的回答 answers 是派生物，
-> 经 MCP 专属工具 `submit_answer` 直接落库，用户可删）。「人类做门禁」是不可动摇的设计。
+> 分身只能提议，用户批准后才落到真源（唯一例外：派生物直落——军情处的回答 answers
+> 经 `submit_answer`、讲武堂的课程小结 lesson_notes 经 `submit_lesson_note`，
+> 均 MCP 专属工具直接落库，用户可删）。「人类做门禁」是不可动摇的设计。
 
 ## 开发流程（强制，三条铁律）
 
@@ -67,15 +68,17 @@ app/mcp_server.py (FastMCP)      app/api.py (FastAPI)
 - `app/domain.py` — 领域常量与规则（状态机、动作白名单）。业务真理的唯一来源。
 - `app/store/projects.py` — 真源读写 + 规则（状态机、主攻唯一）。
 - `app/store/questions.py` — 预设问题读写 + 规则（到期判定、回答版本化）。
+- `app/store/learning.py` — 讲武堂读写 + 规则（大纲同名继承、自评状态机、下一课判定）。
 - `app/store/proposals.py` — 门禁队列（propose→approve 派发→执行）。
-- `app/mcp_server.py` — 分身接入。**故意不暴露任何直接写真源的工具**（answers 专属工具除外，见红线 1）。
+- `app/mcp_server.py` — 分身接入。**故意不暴露任何直接写真源的工具**（派生物专属工具除外，见红线 1）。
 - `app/api.py` — 看板 Web API + 门禁审批端点。
 
 ## 红线（改任何东西都不许破）
 
-1. **MCP 层绝不暴露直接写真源的工具** —— 真源 = projects/todos/backlog/focus，以及问题配置
-   questions；分身对这些的写操作只能走 `propose`。唯一例外：回答 answers 是派生物非真源，
-   走专属工具 `submit_answer` 直接落库（用户可读可删）。
+1. **MCP 层绝不暴露直接写真源的工具** —— 真源 = projects/todos/backlog/focus、问题配置
+   questions、学习主题与大纲及自评 learning；分身对这些的写操作只能走 `propose`。唯一
+   例外：派生物直落——军情处的回答 answers（`submit_answer`）与讲武堂的课程小结
+   lesson_notes（`submit_lesson_note`），均非真源，用户可读可删。
 2. **数据不出墙** —— `data/`、`*.db` 永远 gitignore；代码进仓库，数据留本地。
 3. **业务规则只在 store 层强制** —— 状态机、主攻唯一等，不在 API/MCP 层重复实现。
 4. **无鉴权仅限 localhost** —— 接网络/远程前必须先加鉴权。

@@ -95,6 +95,40 @@ CREATE TABLE IF NOT EXISTS answers (
     created      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_answers_q ON answers(question_id, run_date, version);
+
+-- 讲武堂（学习）：track = 学习主题，knowledge_points = 知识点大纲（门禁保护），
+-- lesson_notes = 课程小结（派生物直落，不外键知识点——大纲调整不毁历史）。
+CREATE TABLE IF NOT EXISTS learning_tracks (
+    id       TEXT PRIMARY KEY,            -- l1/l2/... 递增
+    title    TEXT NOT NULL,
+    goal     TEXT NOT NULL,               -- 一句话学习目标
+    status   TEXT NOT NULL DEFAULT 'active',  -- active/paused/done
+    ord      INTEGER NOT NULL DEFAULT 0,
+    created  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS knowledge_points (
+    id          TEXT PRIMARY KEY,         -- k1/k2/... 全局递增
+    track_id    TEXT NOT NULL REFERENCES learning_tracks(id) ON DELETE CASCADE,
+    title       TEXT NOT NULL,
+    summary     TEXT NOT NULL DEFAULT '',
+    ord         INTEGER NOT NULL DEFAULT 0,   -- track 内学习顺序
+    status      TEXT NOT NULL DEFAULT 'todo', -- todo/learned/revisit（用户自评）
+    learned_at  TEXT,                     -- 标记掌握时间（UTC）
+    created     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_points_track ON knowledge_points(track_id, ord);
+
+CREATE TABLE IF NOT EXISTS lesson_notes (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    track_id     TEXT NOT NULL REFERENCES learning_tracks(id) ON DELETE CASCADE,
+    point_title  TEXT NOT NULL,           -- 知识点标题快照（不外键，大纲调整不毁历史）
+    body_md      TEXT NOT NULL,
+    sources      TEXT NOT NULL DEFAULT '[]',  -- JSON: [{title,url}...]
+    model        TEXT NOT NULL DEFAULT '',
+    created      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notes_track ON lesson_notes(track_id, created);
 """
 
 

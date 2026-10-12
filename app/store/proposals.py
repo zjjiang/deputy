@@ -12,6 +12,7 @@ import json
 from typing import Any
 
 from .. import domain
+from . import learning as learn
 from . import projects as proj
 from . import questions as qs
 from .db import get_conn, transaction
@@ -99,8 +100,13 @@ def approve(proposal_id: int, now: str) -> dict[str, Any]:
         action = row["action"]
         args = json.loads(row["args"])
     # 先执行（store 层自带事务与规则校验），成功再落状态，避免"标了approved但没执行"。
-    # 按动作归属路由：questions 的建/改题走 questions.dispatch，其余走 projects。
-    dispatcher = qs if qs.handles(action) else proj
+    # 按动作归属路由：questions/learning 各自的动作走本模块 dispatch，其余走 projects。
+    if qs.handles(action):
+        dispatcher = qs
+    elif learn.handles(action):
+        dispatcher = learn
+    else:
+        dispatcher = proj
     result = dispatcher.dispatch(action, args, now=now)
     with transaction() as conn:
         conn.execute(

@@ -235,3 +235,70 @@ def test_edit_question_via_gate(fresh_db):
     assert questions.get_question(q["id"])["title"] == "原题"  # 未批准不生效
     proposals.approve(prop["id"], now=NOW_Q)
     assert questions.get_question(q["id"])["title"] == "改过的题"
+
+
+# ---------- 讲武堂的门禁动作（add_track / set_curriculum / set_point_status）----------
+
+NOW_L = "2026-10-12T00:00:00+00:00"
+
+
+def test_add_track_via_gate(fresh_db):
+    from app.store import learning, proposals
+
+    proposals.propose(
+        "add_track", {"title": "具身智能", "goal": "能看懂前沿论文"},
+        reason="想系统学", now=NOW_L,
+    )
+    assert learning.list_tracks() == []  # 提议不落地
+    pend = proposals.list_proposals("pending")
+    assert pend[0]["action"] == "add_track"
+    proposals.approve(pend[0]["id"], now=NOW_L)
+    tracks = learning.list_tracks()
+    assert len(tracks) == 1 and tracks[0]["title"] == "具身智能"
+
+
+def test_set_curriculum_via_gate(fresh_db):
+    from app.store import learning, proposals
+
+    t = learning.add_track("具身智能", "g", now=NOW_L)
+    prop = proposals.propose(
+        "set_curriculum",
+        {"track_id": t["id"], "points": [{"title": "A"}, {"title": "B"}]},
+        reason="首份大纲", now=NOW_L,
+    )
+    assert learning.get_track(t["id"])["points"] == []  # 未批准不落地
+    proposals.approve(prop["id"], now=NOW_L)
+    pts = learning.get_track(t["id"])["points"]
+    assert [p["title"] for p in pts] == ["A", "B"]
+
+
+def test_set_point_status_via_gate_and_blocked_on_illegal(fresh_db):
+    from app.store import learning, proposals
+
+    t = learning.add_track("具身智能", "g", now=NOW_L)
+    learning.set_curriculum(t["id"], [{"title": "A"}], now=NOW_L)
+    kid = learning.get_track(t["id"])["points"][0]["id"]
+    prop = proposals.propose(
+        "set_point_status", {"point_id": kid, "status": "learned"},
+        reason="用户在微信说懂了", now=NOW_L,
+    )
+    proposals.approve(prop["id"], now=NOW_L)
+    assert learning.get_point(kid)["status"] == "learned"
+
+    # 非法状态：批准时被业务规则拦截，提议保持 pending
+    bad = proposals.propose(
+        "set_point_status", {"point_id": kid, "status": "mastered"},
+        reason="误提交", now=NOW_L,
+    )
+    with pytest.raises(Exception):
+        proposals.approve(bad["id"], now=NOW_L)
+    assert learning.get_point(kid)["status"] == "learned"  # 真源未变
+    pend = proposals.list_proposals("pending")
+    assert len(pend) == 1 and pend[0]["id"] == bad["id"]
+
+
+def test_add_track_missing_required_args_rejected_on_propose(fresh_db):
+    from app.store import proposals
+
+    with pytest.raises(Exception):
+        proposals.propose("add_track", {"title": "只有标题"}, reason="缺 goal", now=NOW_L)

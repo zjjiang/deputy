@@ -193,22 +193,28 @@ const CASH = new Set(["maintain"]);
 // 纯文字状态名，无 emoji
 const STAGES = {spark:"火花",probe:"验证",attack:"主攻",operate:"运营",
                 maintain:"维护",frozen:"雪藏",archived:"归档"};
-const TABS = [["board","全盘"],["gate","门禁"],["questions","问题"],["backlog","需求池"]];
+const TABS = [["board","全盘"],["gate","门禁"],["questions","问题"],["learning","讲武"],["backlog","需求池"]];
 window._tab = window._tab || "board";
 window._state = null; window._props = [];
 window._questions = []; window._openQ = null; window._answers = null;
+window._learning = []; window._openL = null; window._learningDetail = null;
 
 async function load(){
   try{
-    const [s, props, qs] = await Promise.all([
+    const [s, props, qs, ls] = await Promise.all([
       fetch("/api/state").then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}),
       fetch("/api/proposals?status=").then(r=>r.ok?r.json():[]),
-      fetch("/api/questions").then(r=>r.ok?r.json():[])
+      fetch("/api/questions").then(r=>r.ok?r.json():[]),
+      fetch("/api/learning").then(r=>r.ok?r.json():[])
     ]);
-    window._state = s; window._props = props; window._questions = qs;
+    window._state = s; window._props = props; window._questions = qs; window._learning = ls;
     // 展开中的问题：每次轮询顺带刷新其回答（保持版本/未读最新）
     window._answers = window._openQ
       ? await fetch(`/api/question/${window._openQ}/answers`).then(r=>r.ok?r.json():[])
+      : null;
+    // 展开中的主题：顺带刷新详情（知识点自评状态/小结）
+    window._learningDetail = window._openL
+      ? await fetch(`/api/learning/${window._openL}`).then(r=>r.ok?r.json():null)
       : null;
     render();
   }catch(e){
@@ -272,6 +278,27 @@ function openQuestion(qid){
   render();
   if(window._openQ) load();  // 按需拉取该题回答
 }
+// 讲武堂
+function addTrack(){
+  const t=prompt("学习主题（如：具身智能）："); if(!t||!t.trim())return;
+  const g=prompt("一句话学习目标（如：能看懂前沿论文）："); if(!g||!g.trim())return;
+  post("/api/learning/track/add",{title:t.trim(),goal:g.trim()});
+}
+function editTrack(tid){
+  const t=(window._learning||[]).find(x=>x.id===tid); if(!t)return;
+  const ti=prompt("主题名：",t.title); if(ti===null)return;
+  const g=prompt("学习目标：",t.goal); if(g===null)return;
+  post(`/api/learning/track/${tid}/edit`,{title:ti.trim(),goal:g.trim()});
+}
+function setTrackStatus(tid,st){ post(`/api/learning/track/${tid}/status`,{status:st}); }
+function removeTrack(tid){ if(confirm("删除该主题及其大纲与全部课程小结？")) post(`/api/learning/track/${tid}/remove`); }
+function setPoint(pid,st){ post(`/api/learning/point/${pid}/status`,{status:st}); }
+function openLearning(tid){
+  window._openL = window._openL===tid ? null : tid;
+  window._learningDetail = null;
+  render();
+  if(window._openL) load();  // 按需拉取主题详情（知识点/小结）
+}
 
 function render(){
   const s = window._state; if(!s) return;
@@ -290,6 +317,7 @@ function render(){
   if(window._tab==="gate") h = renderGate(pend, props);
   else if(window._tab==="board") h = renderBoard(s);
   else if(window._tab==="questions") h = renderQuestions();
+  else if(window._tab==="learning") h = renderLearning();
   else h = renderBacklog(s);
   h += `<footer>更新于 ${new Date().toLocaleTimeString()} · 唯一真源 SQLite · 网页与分身同一份数据</footer>`;
   document.getElementById("board").innerHTML = h;
@@ -480,13 +508,86 @@ function renderAnswers(){
   }).join("") + `</div>`;
 }
 
+// ---------- 讲武堂（学习） ----------
+
+const TRACK_STATUS = {active:"进行中", paused:"暂停", done:"已完成"};
+const POINT_STATUS = {todo:"待学", learned:"已掌握", revisit:"待回炉"};
+
+function renderLearning(){
+  const tracks = window._learning||[];
+  let h = `<div class="overview">
+    <span class="ov">讲武堂 · 主题你开，大纲分身写你批，进度你评</span>
+    <span style="margin-left:auto"><button class="act" onclick="addTrack()">＋ 新建主题</button></span></div>`;
+  if(!tracks.length){
+    h += `<div class="empty"><div class="lead">还没有学习主题</div>
+      建一个主题（如「具身智能」），在微信让分身出大纲（走门禁给你批），然后按序开课。课后小结会落在这里。</div>`;
+    return h;
+  }
+  for(const t of tracks){
+    const st = t.status!=="active" ? `<span class="kind-badge">${TRACK_STATUS[t.status]||esc(t.status)}</span>` : "";
+    const prog = t.progress ? `<span class="kind-badge">${t.progress.learned}/${t.progress.total} 已掌握</span>` : "";
+    const nextTxt = !t.progress || t.progress.total===0
+      ? "大纲未生成 —— 在微信让分身出大纲（走门禁），或经 API 直接设置"
+      : (t.next_point ? `下一课：${esc(t.next_point.title)}${t.next_point.status==="revisit"?"（回炉）":""}` : "全部走完，可标记完成");
+    h += `<div class="card" id="card-${esc(t.id)}">
+      <div class="head">
+        <span class="name" onclick="openLearning('${esc(t.id)}')">${esc(t.title)}</span>
+        ${st}${prog}
+        <span style="margin-left:auto"></span>
+        <span class="act" onclick="editTrack('${esc(t.id)}')">编辑</span>
+        ${t.status==="active"?`<span class="act" onclick="setTrackStatus('${esc(t.id)}','paused')">暂停</span>`:`<span class="act" onclick="setTrackStatus('${esc(t.id)}','active')">恢复</span>`}
+        ${t.status!=="done"?`<span class="act" onclick="setTrackStatus('${esc(t.id)}','done')">完成</span>`:""}
+        <span class="act" onclick="removeTrack('${esc(t.id)}')">删除</span>
+      </div>
+      <div class="q-prompt" onclick="openLearning('${esc(t.id)}')">${esc(t.goal)}</div>
+      <div class="q-meta">${nextTxt}</div>
+      ${window._openL===t.id ? renderLearningDetail() : ""}
+    </div>`;
+  }
+  return h;
+}
+
+function renderLearningDetail(){
+  const d = window._learningDetail;
+  if(!d) return `<div class="q-answers"><div class="empty-todo">加载中…</div></div>`;
+  const pts = (d.points||[]).map(p=>{
+    const badge = `<span class="kind-badge${p.status==="learned"?" hot":""}">${POINT_STATUS[p.status]||esc(p.status)}</span>`;
+    const btn = (label,target,show)=> show?`<span class="act" onclick="setPoint('${esc(p.id)}','${target}')">${label}</span>`:"";
+    const ops = `<span style="margin-left:auto;white-space:nowrap">
+      ${btn("懂了","learned",p.status!=="learned")}
+      ${btn("没懂","revisit",p.status!=="revisit")}
+      ${btn("重置","todo",p.status!=="todo")}</span>`;
+    return `<li class="${p.status==="learned"?"done":""}" style="display:flex;align-items:baseline;gap:8px">
+      <span class="txt" style="flex:1">${esc(p.title)}${p.summary?` <span style="color:var(--faint);font-size:12px">${esc(p.summary)}</span>`:""}</span>
+      ${badge}${ops}</li>`;
+  }).join("");
+  const pointsBlock = d.points && d.points.length
+    ? `<ul class="todos">${pts}</ul>`
+    : `<div class="empty-todo">大纲未生成。在微信让分身出大纲（会走门禁给你批）。</div>`;
+  const notes = (d.notes||[]).map(n=>`
+    <div class="ans"><div class="ans-head">
+      <span class="ans-badge">${esc(n.point_title)}</span>
+      <span class="ans-meta">${esc(n.model||"")}${n.created?` · ${esc(n.created.slice(5,16).replace("T"," "))}`:""}</span></div>
+      <div class="ans-body">${esc(n.body_md)}</div>
+      ${(n.sources||[]).length?`<div class="srcs">${n.sources.map(s=>{
+        const u=safeUrl(s.url); return u?`<a class="src" href="${escAttr(u)}" target="_blank" rel="noopener">${esc(s.title||s.url)}</a>`:"";}).join("")}</div>`:""}
+    </div>`).join("");
+  return `<div class="q-answers">
+    <p class="section-label" style="margin:0 0 4px">知识点<span class="n">${(d.points||[]).length}</span><span class="rule"></span></p>
+    ${pointsBlock}
+    <p class="section-label" style="margin:8px 0 2px">课程小结<span class="n">${(d.notes||[]).length}</span><span class="rule"></span></p>
+    ${notes||'<div class="empty-todo">还没有上课记录。</div>'}
+  </div>`;
+}
+
 function actionLabel(a){return {
   set_focus:"更新此刻聚焦", add_todo:"加一条 todo", toggle_todo:"勾选/取消 todo",
   edit_todo:"修改 todo", remove_todo:"删除 todo", set_stage:"改变项目状态",
   set_drive:"改变谁在推", set_kind:"改变项目类型", set_trigger:"设置解冻扳机",
   add_project:"新建项目", rename_project:"项目改名", add_to_backlog:"丢想法进需求池",
   reorder_project:"调整项目排序", add_question:"新建预设问题",
-  edit_question:"调整预设问题"}[a]||a;}
+  edit_question:"调整预设问题", add_track:"新建学习主题",
+  set_curriculum:"设置学习大纲", set_point_status:"代写知识点自评"}[a]||a;}
 function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
 // 属性上下文转义（esc 不转义引号；href/style 等属性值必须用它）
 function escAttr(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}

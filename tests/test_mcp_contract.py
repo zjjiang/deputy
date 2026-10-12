@@ -35,6 +35,7 @@ def test_mcp_exposes_expected_tools():
         "get_state", "get_project", "list_pending_proposals",
         "propose", "approve_proposal", "reject_proposal",
         "list_questions", "get_question", "submit_answer",
+        "get_learning", "submit_lesson_note",
     }
 
 
@@ -76,3 +77,31 @@ def test_avatar_flow_list_then_submit(fresh_db):
     assert detail["last_run_at"] is not None
     assert detail["answers"][0]["body_md"] == "结论A [doc:1]"
     assert _call("list_questions", {}) == []  # 跑完即不再到期
+
+
+def test_teaching_flow_get_then_submit(fresh_db):
+    """分身教学端到端：取下一课 → 上完课存小结。"""
+    from app.store import learning
+
+    t = learning.add_track("具身智能", "能看懂前沿论文", now="2026-10-12T00:00:00+00:00")
+    learning.set_curriculum(
+        t["id"], [{"title": "A"}, {"title": "B"}], now="2026-10-12T00:00:00+00:00"
+    )
+
+    # 1. 备课：默认返回 active track，含进度与下一课
+    tracks = _call("get_learning", {})
+    assert [x["id"] for x in tracks] == [t["id"]]
+    assert tracks[0]["next_point"]["title"] == "A"
+    assert tracks[0]["progress"]["todo"] == 2
+
+    # 2. 讲完课，小结直落
+    note = _call("submit_lesson_note", {
+        "track_id": t["id"], "point_title": "A",
+        "body_md": "本课要点：…", "model": "龙虾",
+    })
+    assert note["point_title"] == "A"
+
+    # 3. 详情可见小结；进度不变（自评是用户的事，分身不碰）
+    detail = _call("get_learning", {"track_id": t["id"], "with_notes": 3})
+    assert detail["notes"][0]["body_md"] == "本课要点：…"
+    assert detail["next_point"]["title"] == "A"  # 仍是 A，等用户自评
