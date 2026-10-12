@@ -31,6 +31,9 @@
     border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:7px}
   nav .tab:hover{color:var(--ink)}
   nav .tab.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+  nav .tgroup{font-size:10px;color:var(--faint);letter-spacing:.1em;font-weight:600;
+    align-self:center;margin:0 4px 0 14px}
+  nav .tgroup:first-child{margin-left:0}
   nav .count{font-family:var(--mono);font-size:11px;color:var(--faint);
     background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 5px;line-height:16px}
   nav .tab.on .count{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
@@ -179,8 +182,8 @@
 </head>
 <body>
 <header>
-  <h1>二号位</h1>
-  <span class="sub">决策中枢</span>
+  <h1>参谋部</h1>
+  <span class="sub">一号位的参谋部 · deputy</span>
   <span class="status"><span class="dot"></span>运行中 · 分身提议，你做门禁</span>
 </header>
 <nav id="tabs"></nav>
@@ -193,7 +196,12 @@ const CASH = new Set(["maintain"]);
 // 纯文字状态名，无 emoji
 const STAGES = {spark:"火花",probe:"验证",attack:"主攻",operate:"运营",
                 maintain:"维护",frozen:"雪藏",archived:"归档"};
-const TABS = [["board","全盘"],["gate","门禁"],["questions","问题"],["learning","讲武"],["backlog","需求池"]];
+// 导航按三处分组：作战（项目管理）/ 军情（预设问题）/ 讲武（学习）
+const TAB_GROUPS = [
+  ["作战", [["board","全盘"],["gate","门禁"],["backlog","需求池"]]],
+  ["军情", [["questions","军情"]]],
+  ["讲武", [["learning","讲武"]]],
+];
 window._tab = window._tab || "board";
 window._state = null; window._props = [];
 window._questions = []; window._openQ = null; window._answers = null;
@@ -306,12 +314,14 @@ function render(){
   const pend = props.filter(p=>p.status==="pending");
   const unread = (window._questions||[]).reduce((n,q)=>n+(q.unread_count||0),0);
 
-  document.getElementById("tabs").innerHTML = TABS.map(([k,label])=>{
-    let count = "";
-    if(k==="gate" && pend.length) count = `<span class="count hot">${pend.length}</span>`;
-    else if(k==="questions" && unread) count = `<span class="count hot">${unread}</span>`;
-    return `<div class="tab ${k===window._tab?'on':''}" onclick="setTab('${k}')">${label}${count}</div>`;
-  }).join("");
+  document.getElementById("tabs").innerHTML = TAB_GROUPS.map(([group, tabs])=>
+    `<span class="tgroup">${group}</span>` + tabs.map(([k,label])=>{
+      let count = "";
+      if(k==="gate" && pend.length) count = `<span class="count hot">${pend.length}</span>`;
+      else if(k==="questions" && unread) count = `<span class="count hot">${unread}</span>`;
+      return `<div class="tab ${k===window._tab?'on':''}" onclick="setTab('${k}')">${label}${count}</div>`;
+    }).join("")
+  ).join("");
 
   let h = "";
   if(window._tab==="gate") h = renderGate(pend, props);
