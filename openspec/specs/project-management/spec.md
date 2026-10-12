@@ -1,7 +1,9 @@
 # project-management Specification
 
 ## Purpose
-TBD - created by archiving change add-set-kind. Update Purpose after archive.
+作战处：一人公司的项目管理真源——项目（stage 生命周期状态机/主攻唯一）、todo、
+需求池、此刻聚焦，以及看板的呈现与门禁约束。用户直接操作或批准分身提议后，
+状态在此落地；这里是决策的唯一账本。
 ## Requirements
 ### Requirement: 修改项目类型 kind
 系统 SHALL 支持修改已有项目的 `kind`（`biz` 商业 / `tool` 自用工具），且仅接受这两个合法值。用户 SHALL 能在看板经 API 直接修改；分身 SHALL 只能经门禁提议（`propose(set_kind, ...)`）修改，不得直接写真源。

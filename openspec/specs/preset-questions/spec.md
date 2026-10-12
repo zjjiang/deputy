@@ -5,6 +5,7 @@
 预设问题：用户预设「要 AI 持续关注什么」，常驻 AI 分身定期基于 feed-curator 知识库思考并回填版本化回答，看板阅读。让沉淀的订阅信息以「增量回答」的方式反哺每日决策，回答与问题的进化都尊重「人类做门禁」。
 
 
+## Requirements
 ### Requirement: 用户管理预设问题
 用户 SHALL 能在看板/HTTP API 创建、编辑、删除预设问题。问题包含：标题、prompt（给 AI 的完整问题文本）、过滤器（`kinds`/`domain` 为 feed-curator 侧的文档类型与领域，deputy 不拥有该分类法，SHALL 只做类型检查、按不透明值透传，不校验取值；`days` 时间窗天数、`max_docs` 单次取料上限，均为正整数）、节奏 `cadence` ∈ {daily, weekly, manual}。非法取值 SHALL 被拒绝并返回业务错误（HTTP 400）；操作不存在的问题 SHALL 返回未找到（HTTP 404）。
 
