@@ -4,13 +4,13 @@
 
 ## 2. curator 客户端（TDD：Red → Green）
 
-- [ ] 2.1 写 `tests/test_curator.py`（Red，httpx.MockTransport 三态）：list_docs 转发参数与响应透传、domains、set_reading、超时/非 200/连接错误 → CuratorUnavailable；跑确认全红
-- [ ] 2.2 写 `app/services/curator.py`（Green）：唯一集成出口（base URL env 可配默认 127.0.0.1:9003、timeout 2.0、CuratorUnavailable 异常）；`pyproject.toml` httpx 进主依赖；跑 `pytest tests/test_curator.py` 全绿
+- [x] 2.1 写 `tests/test_curator.py`（Red，httpx.MockTransport 三态）：list_docs 转发参数与响应透传、domains、set_reading、超时/非 200/连接错误 → CuratorUnavailable；跑确认全红
+- [x] 2.2 写 `app/services/curator.py`（Green）：唯一集成出口（base URL env 可配默认 127.0.0.1:9003、timeout 2.0、CuratorUnavailable 异常）；`pyproject.toml` httpx 进主依赖；跑 `pytest tests/test_curator.py` 全绿
 
 ## 3. 代理端点（TDD：Red → Green）
 
-- [ ] 3.1 写 `tests/test_intel_api.py`（Red）：`GET /api/intel/docs`（page→offset、筛选透传、正常透传 JSON）、`GET /api/intel/domains`、`POST /api/intel/reading/{doc_id}`；CuratorUnavailable → 503 带降级文案；参数校验（min_stars 越界 400）；跑确认全红
-- [ ] 3.2 `app/api.py`（Green）：三端点 + `_guard` 风格异常映射；跑 `pytest tests/test_intel_api.py` 全绿
+- [x] 3.1 写 `tests/test_intel_api.py`（Red）：`GET /api/intel/docs`（page→offset、筛选透传、正常透传 JSON）、`GET /api/intel/domains`、`POST /api/intel/reading/{doc_id}`；CuratorUnavailable → 503 带降级文案；参数校验（min_stars 越界 400）；跑确认全红
+- [x] 3.2 `app/api.py`（Green）：三端点 + `_guard` 风格异常映射；跑 `pytest tests/test_intel_api.py` 全绿
 
 ## 4. 前端
 

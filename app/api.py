@@ -14,12 +14,13 @@ from typing import Any
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import domain
+from .services import curator
 from .store import db, learning, projects, proposals, questions
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
@@ -389,6 +390,53 @@ def track_curriculum(track_id: str, b: CurriculumSet) -> dict[str, Any]:
 def point_status(point_id: str, b: PointStatus) -> dict[str, Any]:
     """用户自评（懂了/没懂/重置）。分身代写走门禁，不经这里。"""
     return _guard(lambda: learning.set_point_status(point_id, b.status, now=_now()))
+
+
+# ---------- 军情处·翻阅：curator 代理（语料流 + 阅读状态写回，deputy 不落库） ----------
+
+class IntelReading(BaseModel):
+    is_read: bool | None = None
+    is_favorite: bool | None = None
+
+
+def _intel(fn):
+    """CuratorUnavailable → 503 降级文案；其余同 _guard。"""
+    try:
+        return fn()
+    except curator.CuratorUnavailable as e:
+        raise HTTPException(status_code=503, detail=f"图书馆闭馆：{e}") from e
+    except domain.DomainError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e).strip('"')) from e
+
+
+@app.get("/api/intel/docs")
+def intel_docs(
+    page: int = Query(1, ge=1),
+    domain_id: int | None = Query(None),
+    kind: str | None = Query(None),
+    min_stars: int | None = Query(None, ge=1, le=5),
+    sort: str | None = Query(None, pattern="^(time|stars)$"),
+) -> dict[str, Any]:
+    """语料流（feed-curator GET /api/docs 的代理，响应原样透传）。"""
+    return _intel(lambda: curator.list_docs(
+        domain_id=domain_id, kind=kind, min_stars=min_stars, sort=sort, page=page,
+    ))
+
+
+@app.get("/api/intel/domains")
+def intel_domains() -> list[dict[str, Any]]:
+    """领域列表（情报流筛选下拉数据）。"""
+    return _intel(lambda: curator.domains())
+
+
+@app.post("/api/intel/reading/{doc_id}")
+def intel_reading(doc_id: int, b: IntelReading) -> dict[str, Any]:
+    """已读/收藏代理写回（存储留在 feed-curator reading 表）。"""
+    return _intel(lambda: curator.set_reading(
+        doc_id, is_read=b.is_read, is_favorite=b.is_favorite,
+    ))
 
 
 # ---------- 静态看板 ----------
