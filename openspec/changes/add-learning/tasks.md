@@ -1,12 +1,12 @@
 ## 1. Store 层（TDD：Red → Green）
 
-- [ ] 1.1 写 `tests/test_learning_store.py`（Red，复用 fresh_db + 固定 NOW）：track CRUD（id l1,l2/ord/空标题或 goal → DomainError/不存在 → KeyError）；跑确认全红
-- [ ] 1.2 同文件补大纲与状态用例（Red）：set_curriculum 首次落地 N 个 todo；整体替换 + 同名继承状态（改名/移除相应消失）；分身经 dispatch 的门禁路径；point 状态机 todo→learned/revisit、revisit→learned/todo、非法状态 → DomainError；learned_at 写入
-- [ ] 1.3 同文件补小结与下一课用例（Red）：submit_lesson_note 追加式（同点多条）、track 删除级联、大纲替换不影响历史小结；next_point（todo 队首/回炉优先/走完 None）
-- [ ] 1.4 `app/domain.py`：`VALID_TRACK_STATUSES`/`VALID_POINT_STATUSES` + label；`PROPOSAL_ACTIONS` +3（add_track/set_curriculum/set_point_status）
-- [ ] 1.5 `app/store/db.py`：SCHEMA 追加 learning_tracks/knowledge_points/lesson_notes 三表；跑全量确认无回归
-- [ ] 1.6 写 `app/store/learning.py`（Green）：add/edit/remove track、set_track_status、set_curriculum（同名继承）、set_point_status、list_tracks(now?)、get_track（详情+notes）、list_notes、submit_lesson_note、next_point、learning.handles/dispatch；跑 `pytest tests/test_learning_store.py` 全绿
-- [ ] 1.7 `tests/test_gate.py` 补用例：add_track 提议→批准落地、reject 不落地；set_curriculum 批准落地/同名继承；set_point_status 批准生效/非法状态批准被拦保持 pending；跑 `pytest tests/test_gate.py` 全绿
+- [x] 1.1 写 `tests/test_learning_store.py`（Red，复用 fresh_db + 固定 NOW）：track CRUD（id l1,l2/ord/空标题或 goal → DomainError/不存在 → KeyError）；跑确认全红
+- [x] 1.2 同文件补大纲与状态用例（Red）：set_curriculum 首次落地 N 个 todo；整体替换 + 同名继承状态（改名/移除相应消失）；分身经 dispatch 的门禁路径；point 状态机 todo→learned/revisit、revisit→learned/todo、非法状态 → DomainError；learned_at 写入
+- [x] 1.3 同文件补小结与下一课用例（Red）：submit_lesson_note 追加式（同点多条）、track 删除级联、大纲替换不影响历史小结；next_point（todo 队首/回炉优先/走完 None）
+- [x] 1.4 `app/domain.py`：`VALID_TRACK_STATUSES`/`VALID_POINT_STATUSES` + label；`PROPOSAL_ACTIONS` +3（add_track/set_curriculum/set_point_status）
+- [x] 1.5 `app/store/db.py`：SCHEMA 追加 learning_tracks/knowledge_points/lesson_notes 三表；跑全量确认无回归
+- [x] 1.6 写 `app/store/learning.py`（Green）：add/edit/remove track、set_track_status、set_curriculum（同名继承）、set_point_status、list_tracks(now?)、get_track（详情+notes）、list_notes、submit_lesson_note、next_point、learning.handles/dispatch；跑 `pytest tests/test_learning_store.py` 全绿
+- [x] 1.7 `tests/test_gate.py` 补用例：add_track 提议→批准落地、reject 不落地；set_curriculum 批准落地/同名继承；set_point_status 批准生效/非法状态批准被拦保持 pending；跑 `pytest tests/test_gate.py` 全绿
 
 ## 2. API 层（TDD：Red → Green）
 

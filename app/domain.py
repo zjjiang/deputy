@@ -28,6 +28,19 @@ VALID_QUESTION_FILTER_KEYS: frozenset[str] = frozenset(
     {"kinds", "domain", "days", "max_docs"}
 )
 
+# ---- 讲武堂（学习）----
+# track 生命周期：active → paused/done（可切回）。done 仅是标记，规则不管。
+VALID_TRACK_STATUSES: frozenset[str] = frozenset({"active", "paused", "done"})
+TRACK_STATUS_LABELS: dict[str, str] = {
+    "active": "进行中", "paused": "暂停", "done": "已完成",
+}
+# 知识点自评状态：todo → learned | revisit；revisit → learned | todo。
+# AI 不得自评——分身改状态只能走门禁代写（set_point_status）。
+VALID_POINT_STATUSES: frozenset[str] = frozenset({"todo", "learned", "revisit"})
+POINT_STATUS_LABELS: dict[str, str] = {
+    "todo": "待学", "learned": "已掌握", "revisit": "待回炉",
+}
+
 # 状态机：每个状态允许迁移到哪些状态。
 # 主线 spark→probe→attack→operate→maintain；任何状态都能被雪藏或归档；
 # 雪藏可解冻回验证/主攻；归档是终态（需 unarchive 专门放开）。
@@ -77,6 +90,10 @@ PROPOSAL_ACTIONS: dict[str, tuple[str, ...]] = {
     # 预设问题：分身可提议建题/改题，用户批准后才落地（answers 不走门禁，见 spec）。
     "add_question": ("title", "prompt"),
     "edit_question": ("question_id",),
+    # 讲武堂：建 track / 提交整份大纲 / 代写自评状态——全部经门禁，AI 不得直写。
+    "add_track": ("title", "goal"),
+    "set_curriculum": ("track_id", "points"),
+    "set_point_status": ("point_id", "status"),
 }
 
 
