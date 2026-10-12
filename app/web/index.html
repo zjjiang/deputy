@@ -398,6 +398,8 @@ const BUCKETS = [
 
 // 已完成的 todo 只显示最近 30 天，更早的不再显示（真源仍全量保留）
 const TODO_VISIBLE_MS = 30*24*3600*1000;
+// 归档项目只显示最近 30 天归档的；无 archived_at 的历史归档视为超期隐藏
+const ARCHIVED_VISIBLE_MS = 30*24*3600*1000;
 
 function projectCard(p, prevId, nextId){
   const isArch = p.stage==="archived";
@@ -445,8 +447,10 @@ function renderBoard(s){
     <div class="sum" onclick="editFocus(${jq(f.summary||'')})">${esc(f.summary||"（点击设置）")}</div>
     ${chips?`<div class="chips">${chips}</div>`:""}</div>`;
 
-  // 按桶分组
-  const byBucket = BUCKETS.map(b=>({b, items: s.projects.filter(p=>b.stages.includes(p.stage))}));
+  // 按桶分组；归档桶只保留最近 30 天归档的项目（无时间戳的历史归档隐藏，真源不动）
+  const recentlyArchived = p => p.stage!=="archived"
+    || (p.archived_at && Date.now()-new Date(p.archived_at).getTime() < ARCHIVED_VISIBLE_MS);
+  const byBucket = BUCKETS.map(b=>({b, items: s.projects.filter(p=>b.stages.includes(p.stage) && recentlyArchived(p))}));
 
   // 桶位概览条（只列非空桶）
   const ov = byBucket.filter(x=>x.items.length).map(x=>
