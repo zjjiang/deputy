@@ -32,19 +32,29 @@ cron prompt 模板（照抄）：
 ⑤ 定稿回填   submit_answer（引用、confidence、gaps、coverage 齐全）
 ```
 
-## 2. 取料：filter → feed-curator API 映射
+## 2. 取料：首选 MCP search_docs，REST 兜底
 
-filter 字段是 feed-curator 侧语义，deputy 原样透传、不解释。映射：
+filter 字段是 feed-curator 侧语义，deputy 原样透传、不解释。
 
-| filter 字段 | feed-curator 参数 | 说明 |
+**主路径（MCP，挂 `127.0.0.1:9003/mcp`）**——`search_docs` 支持相关性与时间窗：
+
+| filter 字段 | search_docs 参数 | 说明 |
 |---|---|---|
-| `kinds`（如 ["paper","article"]） | `GET /api/docs?kind=paper` | 每个值各查一次后合并 |
-| `domain`（如 "具身智能"） | `domain_id=<feed-curator 的领域 id>` | 以 feed-curator `GET /api/domains` 实际 id 为准 |
-| `days`（如 7） | 取回后按 `sort_time`/`published_at` 客户端过滤最近 N 天 | feed-curator 无时间参数 |
-| `max_docs`（如 40） | `limit` | 取料上限，别超 |
+| —— | `query` | 从问题与 filter 提炼关键词，可多轮换词迭代 |
+| `kinds`（如 ["paper","article"]） | `kind=paper` | kind 单值，每个值各查一次后合并 |
+| `domain`（如 "具身智能"） | `domain="具身智能"` | 注意是领域**名称**精确匹配，不是 id |
+| `days`（如 7） | `days=7` | 直接支持，按文档 sort_time |
+| `max_docs`（如 40） | `limit`（上限 50） | 取料上限，别超 |
 
-正文：对入选条目 `GET /api/docs/{id}` 拿 `content_text` 全文。
-**预算意识**：max_docs 条里挑与问题最相关的读（先看标题/摘要/星级），不必条条读全文。
+正文深读用 `get_doc(doc_id)`（默认截 8000 字，可调 max_chars）。
+
+**兜底（REST，MCP 不可用时）**：`GET /api/docs?kind=&domain_id=&limit=`——
+REST **没有时间参数**，`days` 需取回后按 `sort_time`/`published_at` 客户端过滤；
+`limit` 上限 200；领域走 `domain_id`（以 `GET /api/domains` 为准）；正文
+`GET /api/docs/{id}`。
+
+**预算意识**：max_docs 条里挑与问题最相关的读（先看标题/摘要，星级若未判定则为空），
+不必条条读全文。
 feed-curator 服务没起/取料失败：如实提交一条说明失败原因的回答（confidence=low），**绝不编造**。
 
 ## 3. 回答规范
