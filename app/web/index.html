@@ -206,6 +206,9 @@ window._tab = window._tab || "board";
 window._state = null; window._props = [];
 window._questions = []; window._openQ = null; window._answers = null;
 window._learning = []; window._openL = null; window._learningDetail = null;
+window._intel = {loaded:false, degraded:false, loading:false, rows:[], total:0,
+                 page:1, filters:{domain_id:"", kind:"", min_stars:false, sort:"time"},
+                 domains:[]};
 
 async function load(){
   try{
@@ -238,7 +241,10 @@ async function post(url, body){
   if(!r.ok){ const e = await r.json().catch(()=>({})); alert(e.detail||"操作失败"); }
   await load();
 }
-function setTab(t){ window._tab = t; render(); }
+function setTab(t){
+  window._tab = t; render();
+  if(t==="questions" && !window._intel.loaded) loadIntel();  // 情报流不进轮询，开 tab 才拉
+}
 
 // 门禁
 function approve(id){ post(`/api/proposals/${id}/approve`); }
@@ -326,7 +332,7 @@ function render(){
   let h = "";
   if(window._tab==="gate") h = renderGate(pend, props);
   else if(window._tab==="board") h = renderBoard(s);
-  else if(window._tab==="questions") h = renderQuestions();
+  else if(window._tab==="questions") h = renderQuestions() + renderIntel();
   else if(window._tab==="learning") h = renderLearning();
   else h = renderBacklog(s);
   h += `<footer>更新于 ${new Date().toLocaleTimeString()} · 唯一真源 SQLite · 网页与分身同一份数据</footer>`;
@@ -457,7 +463,8 @@ function dueLabel(r){return {["first-run"]:"首次", scheduled:"超期", ["manua
 
 function renderQuestions(){
   const qs = window._questions||[];
-  let h = `<div class="overview">
+  let h = `<p class="section-label">奏折<span class="rule"></span></p>
+  <div class="overview">
     <span class="ov">预设问题 · 分身按节奏跑题，回答落在这里</span>
     <span style="margin-left:auto"><button class="act" onclick="addQuestion()">＋ 新建问题</button></span></div>`;
   if(!qs.length){
@@ -588,6 +595,103 @@ function renderLearningDetail(){
     <p class="section-label" style="margin:8px 0 2px">课程小结<span class="n">${(d.notes||[]).length}</span><span class="rule"></span></p>
     ${notes||'<div class="empty-todo">还没有上课记录。</div>'}
   </div>`;
+}
+
+// ---------- 军情处·翻阅（情报流） ----------
+
+const INTEL_KINDS = {article:"文章", paper:"论文", repo:"仓库"};
+
+async function loadIntel(){
+  const I = window._intel;
+  I.loading = true; render();
+  const f = I.filters, p = new URLSearchParams();
+  if(f.domain_id) p.set("domain_id", f.domain_id);
+  if(f.kind) p.set("kind", f.kind);
+  if(f.min_stars) p.set("min_stars", "4");
+  if(f.sort && f.sort!=="time") p.set("sort", f.sort);
+  p.set("page", I.page);
+  try{
+    const [docs, domains] = await Promise.all([
+      fetch(`/api/intel/docs?${p}`).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}),
+      I.domains.length ? Promise.resolve(null)
+        : fetch("/api/intel/domains").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})
+    ]);
+    I.rows = docs.docs; I.total = docs.total; I.degraded = false;
+    if(domains) I.domains = domains;
+  }catch(e){ I.degraded = true; }
+  I.loading = false; I.loaded = true;
+  render();
+}
+function intelFilter(k, v){ window._intel.filters[k] = v; window._intel.page = 1; loadIntel(); }
+function intelToggleMinStars(cb){ window._intel.filters.min_stars = cb.checked; window._intel.page = 1; loadIntel(); }
+function intelPage(d){
+  const np = window._intel.page + d;
+  if(np < 1 || np > Math.max(1, Math.ceil(window._intel.total/30))) return;
+  window._intel.page = np; loadIntel();
+}
+async function intelMark(id, field){
+  const row = (window._intel.rows||[]).find(r=>r.id===id); if(!row) return;
+  const body = {}; body[field] = !row[field];
+  const r = await fetch(`/api/intel/reading/${id}`, {method:"POST",
+    headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+  if(!r.ok){ const e = await r.json().catch(()=>({})); alert(e.detail||"写回失败"); return; }
+  row[field] = !row[field];  // feed-curator 只回 ok，乐观翻转（下次拉流为准）
+  render();
+}
+
+function renderIntel(){
+  const I = window._intel;
+  let h = `<p class="section-label">情报流<span class="n">${I.total}</span><span class="rule"></span></p>`;
+  if(I.degraded){
+    h += `<div class="empty"><div class="lead">图书馆闭馆</div>
+      feed-curator 没连上，情报流暂时拉不到。奏折不受影响。
+      <div style="margin-top:9px"><button class="act" onclick="loadIntel()">重试</button></div></div>`;
+    return h;
+  }
+  const f = I.filters;
+  const domOpts = ['<option value="">全部领域</option>'].concat((I.domains||[]).map(d=>
+    `<option value="${d.id}" ${String(f.domain_id)===String(d.id)?"selected":""}>${esc(d.name)}</option>`)).join("");
+  const kindOpts = ['<option value="">全部类型</option>'].concat(Object.entries(INTEL_KINDS).map(([k,v])=>
+    `<option value="${k}" ${f.kind===k?"selected":""}>${v}</option>`)).join("");
+  h += `<div class="overview" style="gap:9px">
+    <select class="stage-sel" onchange="intelFilter('domain_id', this.value)">${domOpts}</select>
+    <select class="stage-sel" onchange="intelFilter('kind', this.value)">${kindOpts}</select>
+    <label style="font-size:12.5px;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:5px">
+      <input type="checkbox" ${f.min_stars?"checked":""} onchange="intelToggleMinStars(this)">仅四星</label>
+    <select class="stage-sel" onchange="intelFilter('sort', this.value)">
+      <option value="time" ${f.sort==="time"?"selected":""}>按时间</option>
+      <option value="stars" ${f.sort==="stars"?"selected":""}>按星级</option></select>
+    <span class="ov" style="margin-left:auto">${I.loading?"拉取中…":I.total + " 条"}</span></div>`;
+  if(I.loading) return h;
+  const rows = I.rows||[];
+  if(!rows.length) return h + `<div class="empty"><div class="lead">没有匹配的情报</div>换个筛选条件试试。</div>`;
+  h += rows.map(d=>{
+    const st = d.stars ? `<span class="kind-badge hot">${d.stars} 星</span>` : `<span class="kind-badge">未判定</span>`;
+    const doms = (d.domains||[]).map(x=>`<span class="kind-badge">${esc(x)}</span>`).join("");
+    const kindB = `<span class="kind-badge">${INTEL_KINDS[d.kind]||esc(d.kind)}</span>`;
+    const mark = (field,label)=>`<span class="act" onclick="intelMark(${d.id},'${field}')">${d[field]?"✓ ":""}${label}</span>`;
+    return `<div class="card">
+      <div class="head">
+        <a class="name" href="${escAttr(safeUrl(d.url))}" target="_blank" rel="noopener"
+           style="text-decoration:none;color:var(--ink);font-weight:600">${esc(d.title)}</a>
+        ${kindB}${st}${doms}
+        <span style="margin-left:auto"></span>
+        ${mark("is_read","已读")}${mark("is_favorite","收藏")}
+      </div>
+      ${d.summary?`<div class="q-prompt" style="cursor:default">${esc(d.summary)}</div>`:""}
+      <div class="q-meta">${d.sort_time?esc(fmtEpoch(d.sort_time)):""}</div>
+    </div>`;
+  }).join("");
+  const pages = Math.max(1, Math.ceil(I.total/30));
+  h += `<div class="toolbar" style="justify-content:space-between;align-items:center">
+    <button class="act" onclick="intelPage(-1)" ${I.page<=1?"disabled":""}>上一页</button>
+    <span style="font-size:12px;color:var(--faint);font-family:var(--mono)">${I.page} / ${pages}</span>
+    <button class="act" onclick="intelPage(1)" ${I.page>=pages?"disabled":""}>下一页</button></div>`;
+  return h;
+}
+function fmtEpoch(sec){
+  const n = Number(sec)*1000;
+  return isNaN(n) ? String(sec) : new Date(n).toLocaleDateString();
 }
 
 function actionLabel(a){return {

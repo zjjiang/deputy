@@ -1,6 +1,6 @@
 ## 1. feed-curator 配套（其仓库，独立 PR）
 
-- [ ] 1.1 feed-curator change `add-docs-star-sort`：`GET /api/docs` 增 `sort=time|stars`（复用 `_latest_ok_analysis_ids`）与 `min_stars`（1-5）参数 + 测试；validate 通过（在其仓库分支提 PR）
+- [x] 1.1 feed-curator change `add-docs-star-sort`：`GET /api/docs` 增 `sort=time|stars`（复用 `_latest_ok_analysis_ids`）与 `min_stars`（1-5）参数 + 测试；validate 通过（在其仓库分支提 PR）
 
 ## 2. curator 客户端（TDD：Red → Green）
 
