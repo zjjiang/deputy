@@ -20,8 +20,8 @@
 
 ## 4. 前端
 
-- [ ] 4.1 `app/web/index.html`：「讲武」tab（track 卡片：标题/目标/进度 learned/total/下一课/状态操作；展开知识点清单三键自评 懂了/没懂/重置；小结历史复用回答视图样式）；load() 并入 /api/learning；actionLabel +3；自查无装饰性 emoji
-- [ ] 4.2 本地 smoke：建 track → 门禁批 set_curriculum（模拟分身）→ 看板自评 → 分身 submit_lesson_note → 讲武 tab 进度/小结正确；XSS 回归（来源链接白名单）
+- [x] 4.1 `app/web/index.html`：「讲武」tab（track 卡片：标题/目标/进度 learned/total/下一课/状态操作；展开知识点清单三键自评 懂了/没懂/重置；小结历史复用回答视图样式）；load() 并入 /api/learning；actionLabel +3；自查无装饰性 emoji
+- [x] 4.2 本地 smoke：建 track → 门禁批 set_curriculum（模拟分身）→ 看板自评 → 分身 submit_lesson_note → 讲武 tab 进度/小结正确；XSS 回归（来源链接白名单）
 
 ## 5. 文档与收尾
 
