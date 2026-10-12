@@ -399,10 +399,17 @@ const BUCKETS = [
   {key:"archived", label:"归档",     cls:"archived",color:"var(--s-idle)",  stages:["archived"]},
 ];
 
+// 已完成的 todo 只显示最近 30 天，更早的不再显示（真源仍全量保留）
+const TODO_VISIBLE_MS = 30*24*3600*1000;
+
 function projectCard(p, prevId, nextId){
   const isArch = p.stage==="archived";
   const b = BUCKETS.find(b=>b.stages.includes(p.stage)) || BUCKETS[3];
-  const todos = (p.todos||[]).map(t=>{
+  const allTodos = p.todos||[];
+  const todos = allTodos
+    .filter(t=>!t.done
+      || (t.done_at && Date.now()-new Date(t.done_at).getTime() < TODO_VISIBLE_MS))
+    .map(t=>{
     const doneAt = t.done_at ? `<span class="done-at">${t.done_at.slice(5,10)}</span>` : "";
     return `<li class="${t.done?"done":""}">
       <span class="box" onclick="toggle('${p.id}','${t.id}',${t.done})">${t.done?"✓":""}</span>
@@ -421,7 +428,9 @@ function projectCard(p, prevId, nextId){
       ${up}${down}
       ${isArch?"":`<span class="act" onclick="archive('${p.id}',event)">归档</span>`}
     </div>
-    ${todos?`<ul class="todos">${todos}</ul>`:`<div class="empty-todo">暂无 todo</div>`}
+    ${todos?`<ul class="todos">${todos}</ul>`
+      :allTodos.length?`<div class="empty-todo">todo 都完成了，超过 30 天的已隐藏</div>`
+      :`<div class="empty-todo">暂无 todo</div>`}
     <span class="addtodo" onclick="addTodo('${p.id}')">＋ 加一条</span>
     ${p.stage==="frozen"?`<div class="trig" onclick="editTrigger('${p.id}',${jq(p.trigger||'')})">解冻扳机：<b>${esc(p.trigger||"（点击设置）")}</b></div>`:""}
   </div>`;
