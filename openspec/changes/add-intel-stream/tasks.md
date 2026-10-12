@@ -19,5 +19,5 @@
 
 ## 5. 文档与收尾
 
-- [ ] 5.1 CLAUDE.md 章程：军情处三模式（奏折/面圣/翻阅）+ 集成出口约定（HTTP 访问只经 curator 模块、代理不存储）；mcp_server docstring 军情处描述同步
+- [x] 5.1 CLAUDE.md 章程：军情处三模式（奏折/面圣/翻阅）+ 集成出口约定（HTTP 访问只经 curator 模块、代理不存储）；mcp_server docstring 军情处描述同步
 - [ ] 5.2 全量回归：`uv run pytest -q` 全绿（MCP 契约 11 工具不动）；`openspec validate add-intel-stream` 通过
