@@ -795,12 +795,15 @@ function renderIntel(){
 
 function loadStats(){
   const S = window._stats;
+  const days = S.days;  // 捕获本次窗口：快速切档时丢弃迟到的旧响应
   S.loading = true; render();
-  fetch(`/api/intel/stats?days=${S.days}`)
+  fetch(`/api/intel/stats?days=${days}`)
     .then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})
-    .then(d=>{S.data = d; S.degraded = false;})
-    .catch(()=>{S.degraded = true;})
-    .finally(()=>{S.loading = false; S.loaded = true; render();});
+    .then(d=>{ if(S.days!==days) return;
+      S.data = d; S.degraded = false;})
+    .catch(()=>{ if(S.days!==days) return; S.degraded = true;})
+    .finally(()=>{ if(S.days!==days) return;
+      S.loading = false; S.loaded = true; render();});
 }
 function setStatDays(n){ window._stats.days = n; loadStats(); }
 
@@ -826,8 +829,8 @@ function renderStats(){
         `<tr>${r.map(x=>`<td>${x}</td>`).join("")}</tr>`).join("") + `</table></div>`;
   };
 
-  // 每日总览：最新在前，读起来是"看板"而不是流水账
-  const daily = (d.daily||[]).slice().reverse();
+  // 每日总览：feed-curator 已按最新在前排序（sorted reverse=True），原样渲染
+  const daily = d.daily||[];
   h += table("每日总览",
     ["日期","入库","论文","项目","资讯","分析ok","已读","收藏","四星"],
     daily.map(r=>[esc(r.date), r.ingested, r.papers, r.repos, r.articles,
