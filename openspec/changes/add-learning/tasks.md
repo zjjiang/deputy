@@ -25,6 +25,6 @@
 
 ## 5. 文档与收尾
 
-- [ ] 5.1 写 `docs/teaching-sop.md`：上课流程（取下一课→讲解→引导自评→代写提议→存档）、没懂回炉、小结规范、无检索降级、微信入口说明（无 cron，进度驱动）
-- [ ] 5.2 CLAUDE.md：模块清单加 learning.py；红线 1 例外清单补 lesson_notes（派生物直落）
-- [ ] 5.3 全量回归：`uv run pytest -q` 全绿（11 工具契约 + 守门测试）；`openspec validate add-learning` 通过
+- [x] 5.1 写 `docs/teaching-sop.md`：上课流程（取下一课→讲解→引导自评→代写提议→存档）、没懂回炉、小结规范、无检索降级、微信入口说明（无 cron，进度驱动）
+- [x] 5.2 CLAUDE.md：模块清单加 learning.py；红线 1 例外清单补 lesson_notes（派生物直落）
+- [x] 5.3 全量回归：`uv run pytest -q` 全绿（11 工具契约 + 守门测试）；`openspec validate add-learning` 通过

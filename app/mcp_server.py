@@ -1,10 +1,11 @@
 """FastMCP —— 供分身（龙虾/dodo/openclaw）接入的工具层。
 
-门禁铁律（A 档）：分身能【读】全部，但触及真源（projects/todos/backlog/focus）
-和题目配置（questions）的【写】只能走 propose(...)，落进门禁队列等用户批准。
-这里【故意】不暴露任何直接写真源的工具。唯一的例外是 submit_answer：
-回答（answers）是用户预设之问的派生物，非真源，走专属工具直接落库（见 spec）。
-用户的批准/驳回走 Web API 或 approve_proposal（留给"你"在对话里用）。
+门禁铁律（A 档）：分身能【读】全部，但触及真源（projects/todos/backlog/focus）、
+题目配置（questions）、学习主题与大纲及自评（learning）的【写】只能走 propose(...)，
+落进门禁队列等用户批准。这里【故意】不暴露任何直接写真源的工具。例外是两个派生物
+专属工具：submit_answer（军情处回答）与 submit_lesson_note（讲武堂课程小结）——
+均为分身产出、非真源，直接落库（用户可删）。用户的批准/驳回走 Web API 或
+approve_proposal（留给"你"在对话里用）。
 """
 from __future__ import annotations
 
