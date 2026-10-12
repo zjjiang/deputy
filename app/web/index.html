@@ -199,6 +199,19 @@
   .star-row .off{color:var(--line-strong)}
   .kind-badge.gh-stars{background:#eef4ee;color:#1b5e20;font-weight:600}
 
+  /* 统计面板（军情处·统计） */
+  .stat-wrap{grid-column:1/-1;background:var(--surface);border:1px solid var(--line);
+    border-radius:8px;padding:4px 16px 10px;overflow-x:auto}
+  .stat-wrap h3{font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--faint);margin:12px 0 4px;font-weight:600}
+  .stat-wrap table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:520px}
+  .stat-wrap th{color:var(--faint);font-weight:500;text-align:right;padding:5px 8px;
+    border-bottom:1px solid var(--line-strong);white-space:nowrap}
+  .stat-wrap th:first-child,.stat-wrap td:first-child{text-align:left}
+  .stat-wrap td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;
+    font-family:var(--mono);white-space:nowrap;color:var(--dim)}
+  .stat-wrap tr:last-child td{border-bottom:none}
+
   footer{grid-column:1/-1;color:var(--faint);font-size:11px;text-align:center;
     padding-top:10px;font-family:var(--mono)}
 </style>
@@ -224,13 +237,14 @@ const STAGES = {spark:"火花",probe:"验证",attack:"主攻",operate:"运营",
 const TABS_MAIN = [["board","作战室"],["questions","军情处"],["learning","讲武堂"]];
 const TABS_MORE = [["gate","门禁"],["backlog","需求池"]];
 window._tab = window._tab || "board";
-window._qview = window._qview || "brief";   // 军情处子视图：brief=军报 intel=翻阅
+window._qview = window._qview || "brief";   // 军情处子视图：brief=军报 intel=翻阅 stats=统计
 window._state = null; window._props = [];
 window._questions = []; window._openQ = null; window._answers = null;
 window._learning = []; window._openL = null; window._learningDetail = null;
 window._intel = {loaded:false, degraded:false, loading:false, rows:[], total:0,
                  page:1, filters:{domain_id:"", kind:"", kind_tag:"", min_stars:false, sort:"time"},
                  domains:[]};
+window._stats = {loaded:false, loading:false, degraded:false, days:30, data:null};
 
 async function load(){
   try{
@@ -499,7 +513,12 @@ function dueLabel(r){return {["first-run"]:"首次", scheduled:"超期", ["manua
 // 军情处两栏：军报（待拍板的分身提案 + 回答流）/ 翻阅（情报流）。
 // 原「奏折」并入军报：题目相关的分身提案复用门禁卡片，显示在问题列表上方。
 const Q_ACTIONS = ["add_question","edit_question"];
-function setQview(v){ window._qview = v; if(v==="intel" && !window._intel.loaded) loadIntel(); render(); }
+function setQview(v){
+  window._qview = v;
+  if(v==="intel" && !window._intel.loaded) loadIntel();
+  if(v==="stats" && !window._stats.loaded) loadStats();
+  render();
+}
 
 function renderQuestions(){
   const qs = window._questions||[];
@@ -511,9 +530,13 @@ function renderQuestions(){
   h += `<div class="subnav">
     <span class="pill ${window._qview==="brief"||!window._qview?"on":""}" onclick="setQview('brief')">军报</span>
     <span class="pill ${window._qview==="intel"?"on":""}" onclick="setQview('intel')">翻阅</span>
+    <span class="pill ${window._qview==="stats"?"on":""}" onclick="setQview('stats')">统计</span>
   </div>`;
   if(window._qview==="intel"){
     return h + renderIntel();
+  }
+  if(window._qview==="stats"){
+    return h + renderStats();
   }
   // 军报：有需要拍板的题目相关提案时，先于问题列表显示
   if(qPend.length){
@@ -768,6 +791,58 @@ function renderIntel(){
     <button class="act" onclick="intelPage(1)" ${I.page>=pages?"disabled":""}>下一页</button></div>`;
   return h;
 }
+// ---------- 军情处·统计（feed-curator 窗口统计的只读视图） ----------
+
+function loadStats(){
+  const S = window._stats;
+  S.loading = true; render();
+  fetch(`/api/intel/stats?days=${S.days}`)
+    .then(r=>{if(!r.ok)throw new Error(r.status);return r.json()})
+    .then(d=>{S.data = d; S.degraded = false;})
+    .catch(()=>{S.degraded = true;})
+    .finally(()=>{S.loading = false; S.loaded = true; render();});
+}
+function setStatDays(n){ window._stats.days = n; loadStats(); }
+
+function renderStats(){
+  const S = window._stats;
+  let h = `<p class="section-label">统计<span class="n">入库 → 分析 → 阅读 转化</span><span class="rule"></span></p>`;
+  h += `<div class="overview" style="gap:9px">` + [7,14,30].map(n=>
+      `<span class="pill ${S.days===n?"on":""}" onclick="setStatDays(${n})">${n} 天</span>`).join("") +
+    `<span class="ov" style="margin-left:auto">${S.loading?"拉取中…":""}</span></div>`;
+  if(S.degraded){
+    return h + `<div class="empty"><div class="lead">图书馆闭馆</div>
+      统计暂时拉不到，军报不受影响。
+      <div style="margin-top:9px"><button class="act" onclick="loadStats()">重试</button></div></div>`;
+  }
+  const d = S.data;
+  if(!d) return h + `<div class="empty"><div class="lead">加载中…</div></div>`;
+
+  const table = (title, head, rows)=>{
+    if(!rows.length) return `<div class="stat-wrap"><h3>${title}</h3>
+      <div class="empty-todo" style="padding:6px 0">范围内无数据</div></div>`;
+    return `<div class="stat-wrap"><h3>${title}</h3><table>
+      <tr>${head.map(x=>`<th>${x}</th>`).join("")}</tr>` + rows.map(r=>
+        `<tr>${r.map(x=>`<td>${x}</td>`).join("")}</tr>`).join("") + `</table></div>`;
+  };
+
+  // 每日总览：最新在前，读起来是"看板"而不是流水账
+  const daily = (d.daily||[]).slice().reverse();
+  h += table("每日总览",
+    ["日期","入库","论文","项目","资讯","分析ok","已读","收藏","四星"],
+    daily.map(r=>[esc(r.date), r.ingested, r.papers, r.repos, r.articles,
+                  r.analyzed, r.read, r.favorited, r.ai_high]));
+  h += table("渠道转化",
+    ["渠道","入库","分析ok","已读","收藏","四星","已读率"],
+    (d.pipes||[]).map(p=>[esc(p.name), p.ingested, p.analyzed, p.read,
+                          p.favorited, p.ai_high, (p.read_rate??0)+"%"]));
+  h += table("领域转化",
+    ["领域","入库","分析ok","已读","收藏","四星","已读率"],
+    (d.domains||[]).map(x=>[esc(x.name), x.ingested, x.analyzed, x.read,
+                            x.favorited, x.ai_high, (x.read_rate??0)+"%"]));
+  return h;
+}
+
 function fmtEpoch(sec){
   const n = Number(sec)*1000;
   return isNaN(n) ? String(sec) : new Date(n).toLocaleDateString();

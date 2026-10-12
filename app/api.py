@@ -434,6 +434,12 @@ def intel_domains() -> list[dict[str, Any]]:
     return _intel(lambda: curator.domains())
 
 
+@app.get("/api/intel/stats")
+def intel_stats(days: int = Query(30, ge=1, le=92)) -> dict[str, Any]:
+    """窗口统计（feed-curator /api/admin/stats 的代理，响应原样透传）。"""
+    return _intel(lambda: curator.admin_stats(days=days))
+
+
 @app.post("/api/intel/reading/{doc_id}")
 def intel_reading(doc_id: int, b: IntelReading) -> dict[str, Any]:
     """已读/收藏代理写回（存储留在 feed-curator reading 表）。"""
