@@ -10,8 +10,8 @@
 
 ## 2. API 层（TDD：Red → Green）
 
-- [ ] 2.1 写 `tests/test_learning_api.py`（Red）：GET /api/learning 概览（进度计数/下一课）；track add/edit/remove/status、curriculum 直设、point status 200 路径；校验失败 400；不存在 404
-- [ ] 2.2 `app/api.py`（Green）：约 8 端点 + Pydantic body + `_guard`；跑 `pytest tests/test_learning_api.py` 全绿
+- [x] 2.1 写 `tests/test_learning_api.py`（Red）：GET /api/learning 概览（进度计数/下一课）；track add/edit/remove/status、curriculum 直设、point status 200 路径；校验失败 400；不存在 404
+- [x] 2.2 `app/api.py`（Green）：约 8 端点 + Pydantic body + `_guard`；跑 `pytest tests/test_learning_api.py` 全绿
 
 ## 3. MCP 层（TDD：Red → Green）
 
