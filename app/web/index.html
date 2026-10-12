@@ -46,9 +46,12 @@
   .subnav .pill:hover{color:var(--ink)}
   .subnav .pill.on{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);font-weight:600}
 
-  main{max-width:920px;margin:0 auto;padding:18px 24px 32px;
-    display:grid;gap:11px;grid-template-columns:repeat(auto-fill,minmax(400px,1fr))}
+  main{max-width:920px;margin:0 auto;padding:18px 24px 32px;display:grid;gap:11px;grid-template-columns:1fr}
   .full{grid-column:1/-1}
+  /* 条状列表：一块面板，行间发丝线分隔（项目/提案/主题/情报/需求池通用） */
+  .list{grid-column:1/-1;background:var(--surface);border:1px solid var(--line);
+    border-radius:8px;overflow:hidden}
+  .list > * + *{border-top:1px solid var(--line)}
   .section-label{grid-column:1/-1;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
     color:var(--faint);margin:6px 0 -2px;font-weight:600;display:flex;align-items:center;gap:8px}
   .section-label .n{font-family:var(--mono);color:var(--dim)}
@@ -61,9 +64,8 @@
   .ov .swatch{width:9px;height:9px;border-radius:2px}
   .ov .cnt{font-family:var(--mono);font-weight:650;color:var(--ink);font-size:14px}
 
-  /* 门禁提议卡 —— 界面唯一视觉重点 */
-  .prop{grid-column:1/-1;background:var(--surface);border:1px solid var(--line-strong);
-    border-left:3px solid var(--accent);border-radius:8px;padding:13px 16px}
+  /* 门禁提议条 —— 界面唯一视觉重点（主色左条 + 发丝线分行） */
+  .prop{border-left:3px solid var(--accent);padding:13px 16px}
   .prop .top{display:flex;align-items:baseline;gap:9px;margin-bottom:7px}
   .prop .act-name{font-weight:600;font-size:14px}
   .prop .tag{font-family:var(--mono);font-size:11px;color:var(--accent);
@@ -106,11 +108,9 @@
 
   .toolbar{grid-column:1/-1;display:flex;justify-content:flex-end}
 
-  /* 项目卡 */
-  .card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--s-idle);
-    border-radius:8px;padding:13px 16px}
-  .card.attack{border-left-width:5px;border-left-color:var(--s-attack);grid-column:1/-1;
-    box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  /* 项目条：桶位色保留为左侧色条 */
+  .card{border-left:3px solid var(--s-idle);padding:12px 16px}
+  .card.attack{border-left-width:4px;border-left-color:var(--s-attack)}
   .card.active{border-left-color:var(--s-active)}
   .card.cash{border-left-color:var(--s-cash)}
   .card.probe{border-left-color:var(--s-probe)}
@@ -153,15 +153,11 @@
   .addbox input:focus{outline:none;border-color:var(--accent)}
   .addbox button{border:none;background:var(--accent);color:#fff;border-radius:7px;
     padding:9px 18px;cursor:pointer;font-size:13px}
-  .bl-item{grid-column:1/-1;background:var(--surface);border:1px solid var(--line);
-    border-radius:7px;padding:9px 14px;font-size:14px;display:flex;gap:10px;align-items:baseline}
+  .bl-item{padding:9px 14px;font-size:14px;display:flex;gap:10px;align-items:baseline}
   .bl-item .s{color:var(--faint);font-size:11px;font-family:var(--mono);margin-left:auto}
 
   /* 预设问题 */
   .kind-badge.hot{color:#fff;background:var(--accent);border-color:var(--accent)}
-  .q-list{grid-column:1/-1;background:var(--surface);border:1px solid var(--line);
-    border-radius:8px;overflow:hidden}
-  .q-row + .q-row{border-top:1px solid var(--line)}
   .q-line{display:flex;align-items:center;gap:9px;padding:8px 14px;cursor:pointer;font-size:14px}
   .q-line:hover{background:var(--bg)}
   .q-dot{width:7px;height:7px;border-radius:50%;background:var(--line);flex:none}
@@ -364,7 +360,7 @@ function renderGate(pend, props, emptyLead){
     h += `<div class="empty"><div class="lead">${emptyLead||"门禁队列为空"}</div>
       分身没有待你拍板的提议。它经 propose 提交的写操作会出现在这里，等你批准或驳回。</div>`;
   }else{
-    h += `<p class="section-label">待你拍板 · ${pend.length} 条</p>`;
+    h += `<p class="section-label">待你拍板 · ${pend.length} 条</p><div class="list">`;
     for(const p of pend){
       const argstr = Object.entries(p.args||{}).map(([k,v])=>`${k}=${JSON.stringify(v)}`).join("　");
       h += `<div class="prop">
@@ -378,6 +374,7 @@ function renderGate(pend, props, emptyLead){
           <button class="btn" onclick="reject(${p.id})">驳回</button>
         </div></div>`;
     }
+    h += `</div>`;
   }
   const done = props.filter(p=>p.status!=="pending").slice(0,8);
   if(done.length){
@@ -462,9 +459,7 @@ function renderBoard(s){
   for(const {b, items} of byBucket){
     if(!items.length) continue;
     h += `<p class="section-label">${b.label}<span class="n">${items.length}</span><span class="rule"></span></p>`;
-    for(let i=0;i<items.length;i++){
-      h += projectCard(items[i], items[i-1]?.id, items[i+1]?.id);
-    }
+    h += `<div class="list">` + items.map((p,i)=>projectCard(p, items[i-1]?.id, items[i+1]?.id)).join("") + `</div>`;
   }
   return h;
 }
@@ -479,7 +474,7 @@ function renderBacklog(s){
       想到啥丢啥，无需组织语言。分身也可以往这里 propose，归类后落进项目。</div>`;
   }else{
     h += `<p class="section-label">${bl.length} 条待归类</p>`;
-    h += bl.map(b=>`<div class="bl-item"><span>${esc(b.text)}</span><span class="s">${esc(b.status||"")}</span></div>`).join("");
+    h += `<div class="list">` + bl.map(b=>`<div class="bl-item"><span>${esc(b.text)}</span><span class="s">${esc(b.status||"")}</span></div>`).join("") + `</div>`;
   }
   return h;
 }
@@ -518,7 +513,7 @@ function renderQuestions(){
       同一天有新料再跑会生成新版本，旧版保留可查。</div>`;
     return h;
   }
-  h += `<div class="q-list">` + qs.map(q=>{
+  h += `<div class="list">` + qs.map(q=>{
     const open = window._openQ===q.id;
     const due = q.due ? `<span class="kind-badge hot" title="${escAttr(dueLabel(q.due_reason))}">待跑</span>` : "";
     const unread = q.unread_count ? `<span class="kind-badge hot">${q.unread_count} 未读</span>` : "";
@@ -590,6 +585,7 @@ function renderLearning(){
       建一个主题（如「具身智能」），在微信让分身出大纲（走门禁给你批），然后按序开课。课后小结会落在这里。</div>`;
     return h;
   }
+  h += `<div class="list">`;
   for(const t of tracks){
     const st = t.status!=="active" ? `<span class="kind-badge">${TRACK_STATUS[t.status]||esc(t.status)}</span>` : "";
     const prog = t.progress ? `<span class="kind-badge">${t.progress.learned}/${t.progress.total} 已掌握</span>` : "";
@@ -611,6 +607,7 @@ function renderLearning(){
       ${window._openL===t.id ? renderLearningDetail() : ""}
     </div>`;
   }
+  h += `</div>`;
   return h;
 }
 
@@ -715,7 +712,7 @@ function renderIntel(){
   if(I.loading) return h;
   const rows = I.rows||[];
   if(!rows.length) return h + `<div class="empty"><div class="lead">没有匹配的情报</div>换个筛选条件试试。</div>`;
-  h += rows.map(d=>{
+  h += `<div class="list">` + rows.map(d=>{
     const st = d.stars ? `<span class="kind-badge hot">${d.stars} 星</span>` : `<span class="kind-badge">未判定</span>`;
     const doms = (d.domains||[]).map(x=>`<span class="kind-badge">${esc(x)}</span>`).join("");
     const kindB = `<span class="kind-badge">${INTEL_KINDS[d.kind]||esc(d.kind)}</span>`;
@@ -731,7 +728,7 @@ function renderIntel(){
       ${d.summary?`<div class="q-prompt" style="cursor:default">${esc(d.summary)}</div>`:""}
       <div class="q-meta">${d.sort_time?esc(fmtEpoch(d.sort_time)):""}</div>
     </div>`;
-  }).join("");
+  }).join("") + `</div>`;
   const pages = Math.max(1, Math.ceil(I.total/30));
   h += `<div class="toolbar" style="justify-content:space-between;align-items:center">
     <button class="act" onclick="intelPage(-1)" ${I.page<=1?"disabled":""}>上一页</button>
