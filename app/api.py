@@ -193,7 +193,8 @@ def project_rename(b: ProjectRename) -> dict[str, Any]:
 
 @app.post("/api/project/stage")
 def project_stage(b: ProjectStage) -> dict[str, Any]:
-    return _guard(lambda: projects.set_stage(b.project_id, b.stage))
+    return _guard(lambda: projects.set_stage(b.project_id, b.stage,
+                                             now=datetime.now().isoformat()))
 
 
 @app.post("/api/project/kind")

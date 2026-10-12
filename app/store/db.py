@@ -16,13 +16,14 @@ DB_PATH = Path(__file__).resolve().parents[2] / "data" / "deputy.db"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (
-    id       TEXT PRIMARY KEY,
-    name     TEXT NOT NULL,
-    stage    TEXT NOT NULL,
-    drive    TEXT NOT NULL,
-    kind     TEXT NOT NULL,
-    trigger  TEXT NOT NULL DEFAULT '',
-    ord      INTEGER NOT NULL DEFAULT 0
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    stage       TEXT NOT NULL,
+    drive       TEXT NOT NULL,
+    kind        TEXT NOT NULL,
+    trigger     TEXT NOT NULL DEFAULT '',
+    ord         INTEGER NOT NULL DEFAULT 0,
+    archived_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS todos (
@@ -145,10 +146,13 @@ def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _connect() as conn:
         conn.executescript(SCHEMA)
-        # 幂等迁移：给 todos 加 done_at（历史数据留 NULL）
-        cols = [r[1] for r in conn.execute("PRAGMA table_info(todos)").fetchall()]
-        if "done_at" not in cols:
+        # 幂等迁移：给 todos 加 done_at、projects 加 archived_at（历史数据留 NULL）
+        todo_cols = [r[1] for r in conn.execute("PRAGMA table_info(todos)").fetchall()]
+        if "done_at" not in todo_cols:
             conn.execute("ALTER TABLE todos ADD COLUMN done_at TEXT")
+        proj_cols = [r[1] for r in conn.execute("PRAGMA table_info(projects)").fetchall()]
+        if "archived_at" not in proj_cols:
+            conn.execute("ALTER TABLE projects ADD COLUMN archived_at TEXT")
 
 
 @contextmanager

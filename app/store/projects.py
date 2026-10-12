@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime
 from typing import Any
 
 from .. import domain
@@ -27,6 +28,7 @@ def _project_row_to_dict(conn: sqlite3.Connection, row: sqlite3.Row) -> dict[str
         "drive": row["drive"],
         "kind": row["kind"],
         "trigger": row["trigger"],
+        "archived_at": row["archived_at"],
         "todos": [
             {"id": t["id"], "text": t["text"], "done": bool(t["done"]), "done_at": t["done_at"]} for t in todos
         ],
@@ -186,9 +188,11 @@ def remove_todo(project_id: str, todo_id: str) -> dict[str, Any]:
     return get_project(project_id)
 
 
-def set_stage(project_id: str, stage: str) -> dict[str, Any]:
+def set_stage(project_id: str, stage: str, now: str | None = None) -> dict[str, Any]:
     if stage not in domain.VALID_STAGES:
         raise domain.DomainError(f"非法状态 {stage}")
+    # 归档时间戳随状态机维护：迁入 archived 记时间，非归档态恒为空
+    archived_at = (now or datetime.now().isoformat()) if stage == "archived" else None
     with transaction() as conn:
         row = _require_project(conn, project_id)
         cur = row["stage"]
@@ -210,7 +214,10 @@ def set_stage(project_id: str, stage: str) -> dict[str, Any]:
                 raise domain.DomainError(
                     f"主攻同时只能有一个。请先把「{names}」移出主攻。"
                 )
-        conn.execute("UPDATE projects SET stage = ? WHERE id = ?", (stage, project_id))
+        conn.execute(
+            "UPDATE projects SET stage = ?, archived_at = ? WHERE id = ?",
+            (stage, archived_at, project_id),
+        )
     return get_project(project_id)
 
 
@@ -304,8 +311,8 @@ def rename_project(project_id: str, name: str) -> dict[str, Any]:
     return get_project(project_id)
 
 
-def archive(project_id: str) -> dict[str, Any]:
-    return set_stage(project_id, "archived")
+def archive(project_id: str, now: str | None = None) -> dict[str, Any]:
+    return set_stage(project_id, "archived", now=now)
 
 
 def unarchive(project_id: str, stage: str = "frozen") -> dict[str, Any]:
@@ -323,7 +330,10 @@ def unarchive(project_id: str, stage: str = "frozen") -> dict[str, Any]:
             if others:
                 names = "、".join(o["name"] for o in others)
                 raise domain.DomainError(f"主攻同时只能有一个，请先移出「{names}」")
-        conn.execute("UPDATE projects SET stage = ? WHERE id = ?", (stage, project_id))
+        conn.execute(
+            "UPDATE projects SET stage = ?, archived_at = NULL WHERE id = ?",
+            (stage, project_id),
+        )
     return get_project(project_id)
 
 
@@ -343,7 +353,7 @@ _DISPATCH = {
     "toggle_todo": lambda a, now=None: toggle_todo(a["project_id"], a["todo_id"], a.get("done", True), now=now),
     "edit_todo": lambda a: edit_todo(a["project_id"], a["todo_id"], a["text"]),
     "remove_todo": lambda a: remove_todo(a["project_id"], a["todo_id"]),
-    "set_stage": lambda a: set_stage(a["project_id"], a["stage"]),
+    "set_stage": lambda a, now=None: set_stage(a["project_id"], a["stage"], now=now),
     "set_drive": lambda a: set_drive(a["project_id"], a["drive"]),
     "set_kind": lambda a: set_kind(a["project_id"], a["kind"]),
     "set_trigger": lambda a: set_trigger(a["project_id"], a["trigger"]),
