@@ -14,10 +14,10 @@
 
 ## 4. 前端
 
-- [ ] 4.1 `app/web/index.html`：军情 tab 双区（奏折区挂分区标识逻辑不动；情报流区：筛选条（领域下拉/类型/仅四星/排序）/卡片列表（类型/领域/星级/摘要/已读收藏标识与按钮）/分页；`window._intel` 自持筛选与页码；降级卡 + 重试；不进 5s 轮询）；复用既有样式与 escAttr/safeUrl；自查无装饰性 emoji
+- [x] 4.1 `app/web/index.html`：军情 tab 双区（奏折区挂分区标识逻辑不动；情报流区：筛选条（领域下拉/类型/仅四星/排序）/卡片列表（类型/领域/星级/摘要/已读收藏标识与按钮）/分页；`window._intel` 自持筛选与页码；降级卡 + 重试；不进 5s 轮询）；复用既有样式与 escAttr/safeUrl；自查无装饰性 emoji
 - [x] 4.2 本地 smoke：起 feed-curator（本机）+ deputy → 军情 tab 情报流拉到真实数据 → 筛选/翻页/已读收藏写回 → 杀 feed-curator 看降级卡与奏折无恙 → 重启恢复；XSS 回归
 
 ## 5. 文档与收尾
 
 - [x] 5.1 CLAUDE.md 章程：军情处三模式（奏折/面圣/翻阅）+ 集成出口约定（HTTP 访问只经 curator 模块、代理不存储）；mcp_server docstring 军情处描述同步
-- [ ] 5.2 全量回归：`uv run pytest -q` 全绿（MCP 契约 11 工具不动）；`openspec validate add-intel-stream` 通过
+- [x] 5.2 全量回归：`uv run pytest -q` 全绿（MCP 契约 11 工具不动）；`openspec validate add-intel-stream` 通过
