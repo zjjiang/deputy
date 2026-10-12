@@ -39,7 +39,7 @@
   nav .tab.on .count{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
   nav .count.hot{color:#fff;background:var(--accent);border-color:var(--accent)}
 
-  /* tab 内子导航（军情处：军报/奏折） */
+  /* tab 内子导航（军情处：军报/翻阅） */
   .subnav{display:flex;gap:6px;margin:0 0 12px}
   .subnav .pill{font-size:12px;padding:4px 12px;border:1px solid var(--line);border-radius:14px;
     cursor:pointer;color:var(--dim);background:var(--bg);display:flex;align-items:center;gap:6px}
@@ -220,7 +220,7 @@ const STAGES = {spark:"火花",probe:"验证",attack:"主攻",operate:"运营",
 const TABS_MAIN = [["board","作战室"],["questions","军情处"],["learning","讲武堂"]];
 const TABS_MORE = [["gate","门禁"],["backlog","需求池"]];
 window._tab = window._tab || "board";
-window._qview = window._qview || "brief";   // 军情处子视图：brief=军报 memo=奏折 intel=翻阅
+window._qview = window._qview || "brief";   // 军情处子视图：brief=军报 intel=翻阅
 window._state = null; window._props = [];
 window._questions = []; window._openQ = null; window._answers = null;
 window._learning = []; window._openL = null; window._learningDetail = null;
@@ -480,27 +480,28 @@ function renderBacklog(s){
 const CADENCE_LABELS = {daily:"每天", weekly:"每周", manual:"手动"};
 function dueLabel(r){return {["first-run"]:"首次", scheduled:"超期", ["manual-request"]:"手动"}[r]||r;}
 
-// 军情处两栏：军报（回答流）/ 奏折（题目相关的分身提案，复用门禁卡片）
-const MEMO_ACTIONS = ["add_question","edit_question"];
+// 军情处两栏：军报（待拍板的分身提案 + 回答流）/ 翻阅（情报流）。
+// 原「奏折」并入军报：题目相关的分身提案复用门禁卡片，显示在问题列表上方。
+const Q_ACTIONS = ["add_question","edit_question"];
 function setQview(v){ window._qview = v; if(v==="intel" && !window._intel.loaded) loadIntel(); render(); }
 
 function renderQuestions(){
   const qs = window._questions||[];
-  const qProps = (window._props||[]).filter(p=>MEMO_ACTIONS.includes(p.action));
+  const qProps = (window._props||[]).filter(p=>Q_ACTIONS.includes(p.action));
   const qPend = qProps.filter(p=>p.status==="pending");
   let h = `<div class="overview">
     <span class="ov">军情处 · 分身按节奏跑题，回答落在这里</span>
     <span style="margin-left:auto"><button class="act" onclick="addQuestion()">＋ 新建问题</button></span></div>`;
   h += `<div class="subnav">
     <span class="pill ${window._qview==="brief"||!window._qview?"on":""}" onclick="setQview('brief')">军报</span>
-    <span class="pill ${window._qview==="memo"?"on":""}" onclick="setQview('memo')">奏折${qPend.length?`<span class="count hot">${qPend.length}</span>`:""}</span>
     <span class="pill ${window._qview==="intel"?"on":""}" onclick="setQview('intel')">翻阅</span>
   </div>`;
-  if(window._qview==="memo"){
-    return h + renderGate(qPend, qProps, "没有军情相关的奏折");
-  }
   if(window._qview==="intel"){
     return h + renderIntel();
+  }
+  // 军报：有需要拍板的题目相关提案时，先于问题列表显示
+  if(qPend.length){
+    h += renderGate(qPend, qProps, "");
   }
   if(!qs.length){
     h += `<div class="empty"><div class="lead">还没有预设问题</div>
@@ -684,7 +685,7 @@ function renderIntel(){
   let h = `<p class="section-label">情报流<span class="n">${I.total}</span><span class="rule"></span></p>`;
   if(I.degraded){
     h += `<div class="empty"><div class="lead">图书馆闭馆</div>
-      feed-curator 没连上，情报流暂时拉不到。奏折不受影响。
+      feed-curator 没连上，情报流暂时拉不到。军报不受影响。
       <div style="margin-top:9px"><button class="act" onclick="loadIntel()">重试</button></div></div>`;
     return h;
   }
