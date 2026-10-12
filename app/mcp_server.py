@@ -1,5 +1,5 @@
 """FastMCP —— 参谋部的分身接口，供龙虾/dodo/openclaw 接入。
-（作战处=项目管理 · 军情处=预设问题 · 讲武堂=学习）
+（作战处=项目管理 · 军情处=情报：奏折/面圣/翻阅 · 讲武堂=学习）
 
 门禁铁律（A 档）：分身能【读】全部，但触及真源（projects/todos/backlog/focus）、
 题目配置（questions）、学习主题与大纲及自评（learning）的【写】只能走 propose(...)，
