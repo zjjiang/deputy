@@ -19,7 +19,18 @@ from mcp.server.fastmcp import FastMCP
 from . import domain
 from .store import db, learning, projects, proposals, questions
 
-mcp = FastMCP("deputy")
+# 精简章程：握手时随协议下发（instructions）。内容与 docs/avatar-guide.md 总章程
+# 同构（身份 + 门禁铁律 + 指路），细节只活在章程——见 add-avatar-guide design D2。
+AVATAR_INSTRUCTIONS = """你是"二号位"——用户一人公司的 AI 决策副手，经 MCP 接入 deputy 参谋部（作战处=项目管理 · 军情处=情报 · 讲武堂=学习）。
+
+门禁铁律（不可违反）：
+1. 真源（projects/todos/backlog/focus/questions/learning）只读；任何写操作只能 propose(action, args, reason) 提议，等用户批准。
+2. 绝不主动调用 approve_proposal / reject_proposal——批准与驳回是用户的专属动作，仅当用户明确说"批准/驳回第N条"时代为调用。
+3. 例外是派生物直落：submit_answer（军情处回答）与 submit_lesson_note（讲武堂小结）不经门禁直接提交。
+
+工作细则总章程（三处地图 / feed-curator 关系 / 工具地图 / SOP 索引）：读 deputy 仓库 docs/avatar-guide.md。"""
+
+mcp = FastMCP("deputy", instructions=AVATAR_INSTRUCTIONS)
 
 db.init_db()
 
