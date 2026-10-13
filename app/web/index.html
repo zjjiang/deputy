@@ -182,6 +182,26 @@
   .ans-meta{font-family:var(--mono);font-size:11px;color:var(--faint)}
   .ans-body{white-space:pre-wrap;font-size:13.5px;color:var(--ink);word-break:break-word}
   .ans-body.sup{color:var(--dim)}
+  /* 军报 Markdown 渲染（renderMd 输出，样式从简、随 antd 色板） */
+  .md-body{font-size:13.5px;color:var(--ink);word-break:break-word;line-height:1.65}
+  .md-body p{margin:0 0 7px}
+  .md-body p:last-child{margin-bottom:0}
+  .md-body .md-h{font-weight:650;margin:10px 0 5px}
+  .md-body .md-h1{font-size:15px} .md-body .md-h2{font-size:14.5px}
+  .md-body .md-h3{font-size:14px} .md-body .md-h4{font-size:13.5px;color:var(--dim)}
+  .md-body ul,.md-body ol{margin:0 0 7px;padding-left:20px}
+  .md-body li{margin:2.5px 0}
+  .md-body blockquote{margin:0 0 7px;padding:4px 12px;border-left:3px solid var(--line-strong);
+    color:var(--dim);background:var(--bg);border-radius:0 5px 5px 0}
+  .md-body .md-pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;
+    padding:8px 11px;overflow-x:auto;margin:0 0 7px;font-family:var(--mono);font-size:12px}
+  .md-body code.md-ic{background:var(--bg);border:1px solid var(--line);border-radius:4px;
+    padding:0 5px;font-family:var(--mono);font-size:12px}
+  .md-body table.md-tbl{border-collapse:collapse;margin:0 0 7px;font-size:12.5px;display:block;overflow-x:auto}
+  .md-body table.md-tbl th,.md-body table.md-tbl td{border:1px solid var(--line);padding:3px 9px;text-align:left}
+  .md-body table.md-tbl th{background:var(--bg);font-weight:600}
+  .md-body hr.md-hr{border:none;border-top:1px solid var(--line);margin:9px 0}
+  .md-body a{color:var(--accent)}
   .srcs{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
   .src{font-size:11.5px;color:var(--accent);background:var(--surface);
     border:1px solid var(--line);border-radius:4px;padding:1px 7px;text-decoration:none;
@@ -577,6 +597,94 @@ function renderQuestions(){
   return h;
 }
 
+// 军报回答是模型产出的 Markdown：先整体转义，再做受控标记转换（永不注入原始 HTML）。
+// 支持常用子集：标题/列表/引用/围栏代码/行内代码/粗斜删/链接(仅 http(s))/表格/分隔线。
+function renderMd(src){
+  const lines = String(src||"").replace(/\r\n?/g,"\n").split("\n");
+  // 行内标记：code 先摘出占位，防止后续替换污染代码内容
+  const inline = raw=>{
+    let s = esc(raw);
+    const codes = [];
+    s = s.replace(/`([^`]+)`/g, (_,c)=>{codes.push(c); return `\u0000${codes.length-1}\u0000`;});
+    s = s.replace(/\[([^\]]+)\]\(([^()\s]+)\)/g, (_,t,u)=>{
+      // u 取自已转义文本：先把 &amp; 还原，再经 safeUrl 校验、escAttr 转属性
+      const u2 = safeUrl(u.replace(/&amp;/g,"&"));   // 仅放行 http(s)，防 javascript: 注入
+      return u2 ? `<a href="${escAttr(u2)}" target="_blank" rel="noopener">${t}</a>` : t;
+    });
+    s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+    s = s.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+    return s.replace(/\u0000(\d+)\u0000/g, (_,n)=>`<code class="md-ic">${codes[+n]}</code>`);
+  };
+  const isTableSep = l => /^\s*\|?\s*:?-{3,}[-:\s|]*$/.test(l) && l.includes("|");
+  const cells = l => l.replace(/^\s*\|/,"").replace(/\|\s*$/,"").split("|").map(c=>inline(c.trim()));
+  let h = "", para = [];
+  const flushPara = ()=>{ if(para.length){ h += `<p>${para.join("<br>")}</p>`; para = []; } };
+  for(let i=0;i<lines.length;i++){
+    const L = lines[i];
+    // 围栏代码块
+    const fence = L.match(/^\s*```(\w*)\s*$/);
+    if(fence){
+      flushPara();
+      const buf = [];
+      for(i++; i<lines.length && !/^\s*```\s*$/.test(lines[i]); i++) buf.push(lines[i]);
+      h += `<pre class="md-pre"><code>${esc(buf.join("\n"))}</code></pre>`;
+      continue;
+    }
+    // 表格：当前行含 | 且下一行是分隔行
+    if(L.includes("|") && i+1<lines.length && isTableSep(lines[i+1])){
+      flushPara();
+      const head = cells(L);
+      i += 2;
+      const rows = [];
+      while(i<lines.length && lines[i].includes("|") && lines[i].trim()) rows.push(cells(lines[i++]));
+      i--;
+      h += `<table class="md-tbl"><tr>${head.map(c=>`<th>${c}</th>`).join("")}</tr>` +
+        rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("") + `</table>`;
+      continue;
+    }
+    // 标题
+    const hd = L.match(/^(#{1,4})\s+(.*)$/);
+    if(hd){ flushPara(); h += `<div class="md-h md-h${hd[1].length}">${inline(hd[2])}</div>`; continue; }
+    // 分隔线
+    if(/^\s*(-{3,}|\*{3,})\s*$/.test(L)){ flushPara(); h += `<hr class="md-hr">`; continue; }
+    // 引用
+    if(/^\s*>\s?/.test(L)){
+      flushPara();
+      const buf = [];
+      while(i<lines.length && /^\s*>\s?/.test(lines[i])){
+        buf.push(lines[i].replace(/^\s*>\s?/,""));
+        i++;
+      }
+      i--;
+      h += `<blockquote>${buf.map(inline).join("<br>")}</blockquote>`;
+      continue;
+    }
+    // 无序 / 有序列表
+    const ul = L.match(/^\s*[-*]\s+(.*)$/);
+    const ol = L.match(/^\s*(\d+)[.、]\s+(.*)$/);
+    if(ul || ol){
+      flushPara();
+      const tag = ul ? "ul" : "ol";
+      const items = [];
+      while(i<lines.length){
+        const m = lines[i].match(ul ? /^\s*[-*]\s+(.*)$/ : /^\s*(\d+)[.、]\s+(.*)$/);
+        if(!m) break;
+        items.push(`<li>${inline(m[ul?1:2])}</li>`);
+        i++;
+      }
+      i--;
+      h += `<${tag}>${items.join("")}</${tag}>`;
+      continue;
+    }
+    // 空行断段
+    if(!L.trim()){ flushPara(); continue; }
+    para.push(inline(L));
+  }
+  flushPara();
+  return `<div class="md-body">${h}</div>`;
+}
+
 function renderAnswers(){
   const answers = window._answers;
   if(!answers) return `<div class="q-answers"><div class="empty-todo">加载中…</div></div>`;
@@ -593,11 +701,11 @@ function renderAnswers(){
     if(sup){
       return `<div class="ans sup">${head}
         <details class="sup-details"><summary>v${a.version} · 已被新版本顶替，展开查看</summary>
-          <div class="ans-body sup">${esc(a.body_md)}</div>${srcs?`<div class="srcs">${srcs}</div>`:""}
+          ${renderMd(a.body_md)}${srcs?`<div class="srcs">${srcs}</div>`:""}
         </details></div>`;
     }
     return `<div class="ans">${head}
-      <div class="ans-body">${esc(a.body_md)}</div>${srcs?`<div class="srcs">${srcs}</div>`:""}
+      ${renderMd(a.body_md)}${srcs?`<div class="srcs">${srcs}</div>`:""}
       <div class="ans-ops">
         ${a.status==="new"?`<span class="act" onclick="readAnswer(${a.id})">标已读</span>`:""}
         <span class="act" onclick="delAnswer(${a.id})">删除</span>
