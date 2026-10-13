@@ -261,6 +261,7 @@ window._qview = window._qview || "brief";   // 军情处子视图：brief=军报
 window._state = null; window._props = [];
 window._questions = []; window._openQ = null; window._answers = null;
 window._learning = []; window._openL = null; window._learningDetail = null;
+window._allNotes = {open:false, rows:null, loading:false, expanded:null};
 window._intel = {loaded:false, degraded:false, loading:false, rows:[], total:0,
                  page:1, filters:{domain_id:"", kind:"", kind_tag:"", min_stars:false, sort:"time"},
                  domains:[]};
@@ -279,9 +280,9 @@ async function load(){
     window._answers = window._openQ
       ? await fetch(`/api/question/${window._openQ}/answers`).then(r=>r.ok?r.json():[])
       : null;
-    // 展开中的主题：顺带刷新详情（知识点自评状态/小结）
+    // 展开中的主题：顺带刷新详情（知识点自评状态/小结全量）
     window._learningDetail = window._openL
-      ? await fetch(`/api/learning/${window._openL}`).then(r=>r.ok?r.json():null)
+      ? await fetch(`/api/learning/${window._openL}?notes=999`).then(r=>r.ok?r.json():null)
       : null;
     render();
   }catch(e){
@@ -728,6 +729,7 @@ function renderLearning(){
       建一个主题（如「具身智能」），在微信让分身出大纲（走门禁给你批），然后按序开课。课后小结会落在这里。</div>`;
     return h;
   }
+  h += renderAllNotes();
   h += `<div class="list">`;
   for(const t of tracks){
     const st = t.status!=="active" ? `<span class="kind-badge">${TRACK_STATUS[t.status]||esc(t.status)}</span>` : "";
@@ -776,8 +778,7 @@ function renderLearningDetail(){
       <span class="ans-badge">${esc(n.point_title)}</span>
       <span class="ans-meta">${esc(n.model||"")}${n.created?` · ${esc(n.created.slice(5,16).replace("T"," "))}`:""}</span></div>
       <div class="ans-body">${esc(n.body_md)}</div>
-      ${(n.sources||[]).length?`<div class="srcs">${n.sources.map(s=>{
-        const u=safeUrl(s.url); return u?`<a class="src" href="${escAttr(u)}" target="_blank" rel="noopener">${esc(s.title||s.url)}</a>`:"";}).join("")}</div>`:""}
+      ${noteSrcs(n.sources)}
     </div>`).join("");
   return `<div class="q-answers">
     <p class="section-label" style="margin:0 0 4px">知识点<span class="n">${(d.points||[]).length}</span><span class="rule"></span></p>
@@ -785,6 +786,63 @@ function renderLearningDetail(){
     <p class="section-label" style="margin:8px 0 2px">课程小结<span class="n">${(d.notes||[]).length}</span><span class="rule"></span></p>
     ${notes||'<div class="empty-todo">还没有上课记录。</div>'}
   </div>`;
+}
+
+function noteSrcs(sources){
+  if(!sources || !sources.length) return "";
+  return `<div class="srcs">${sources.map(s=>{
+    const u=safeUrl(s.url); return u?`<a class="src" href="${escAttr(u)}" target="_blank" rel="noopener">${esc(s.title||s.url)}</a>`:"";}).join("")}</div>`;
+}
+
+// 全部课程：跨主题时间线（新的在前），按需加载，点标题展开小结全文
+function renderAllNotes(){
+  const A = window._allNotes;
+  let h = `<div class="card"><div class="head">
+    <span class="name" onclick="toggleAllNotes()">全部课程</span>
+    ${A.rows?`<span class="kind-badge">${A.rows.length} 节</span>`:""}
+    <span style="margin-left:auto"></span>
+    ${A.open&&A.rows?`<span class="act" onclick="loadAllNotes()">刷新</span>`:""}
+    <span class="act" onclick="toggleAllNotes()">${A.open?"收起":"展开"}</span></div>`;
+  if(A.open){
+    if(A.loading) h += `<div class="empty-todo">加载中…</div>`;
+    else if(!A.rows || !A.rows.length) h += `<div class="empty-todo">还没有上课记录。</div>`;
+    else h += A.rows.map(n=>{
+      const open = A.expanded===n.id;
+      return `<div class="ans"><div class="ans-head" style="cursor:pointer" onclick="toggleNote(${n.id})">
+        <span class="ans-badge">${esc(n.track_title)}</span>
+        <span class="ans-badge">${esc(n.point_title)}</span>
+        <span class="ans-meta">${esc(n.model||"")}${n.created?` · ${esc(n.created.slice(5,16).replace("T"," "))}`:""} · ${open?"收起":"展开全文"}</span></div>
+        ${open?`<div class="ans-body">${esc(n.body_md)}</div>${noteSrcs(n.sources)}`:""}
+      </div>`;
+    }).join("");
+  }
+  return h + `</div>`;
+}
+function toggleAllNotes(){
+  const A = window._allNotes;
+  A.open = !A.open;
+  if(A.open && !A.rows && !A.loading) loadAllNotes();
+  render();
+}
+async function loadAllNotes(){
+  const A = window._allNotes;
+  A.loading = true; render();
+  try{
+    const tracks = window._learning||[];
+    const lists = await Promise.all(tracks.map(t=>
+      fetch(`/api/learning/${t.id}/notes?limit=1000`).then(r=>r.ok?r.json():[]).catch(()=>[])
+    ));
+    const rows = [];
+    tracks.forEach((t,i)=>{ (lists[i]||[]).forEach(n=>rows.push({...n, track_title:t.title})); });
+    rows.sort((a,b)=>(b.created||"").localeCompare(a.created||""));
+    A.rows = rows;
+  }catch(e){ A.rows = []; }
+  A.loading = false; render();
+}
+function toggleNote(id){
+  const A = window._allNotes;
+  A.expanded = A.expanded===id ? null : id;
+  render();
 }
 
 // ---------- 军情处·翻阅（情报流） ----------
