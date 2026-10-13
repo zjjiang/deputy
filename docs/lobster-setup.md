@@ -66,8 +66,8 @@ uv run python -m app.mcp_server           # MCP：能启动不报错即可（Ctr
 - `cwd` 必须是 deputy 目录的**绝对路径**（龙虾要在这个目录下拉起进程，才能找到 `app/` 和 `data/`）。
 - 若 `uv` 不在 PATH，把 `command` 换成 `uv` 的绝对路径（`which uv` 查）。
 
-配好后重启龙虾，它应能看到 6 个工具：
-`get_state` `get_project` `list_pending_proposals` `propose` `approve_proposal` `reject_proposal`。
+配好后重启龙虾，验证它能列出 deputy 的工具——**全集以总章程的工具地图为准**
+（`docs/avatar-guide.md` §5，共 11 个），能对上即接入成功。
 
 ## 5. 给龙虾装"二号位"人设（关键，A 档门禁的安全带）
 
@@ -75,28 +75,23 @@ deputy 的 MCP 在**结构上**保证分身不能直接写真源——但 `appro
 A 档（当前采用）靠**龙虾的系统提示**守住"分身不自己批"。把下面这段写进龙虾的角色/系统提示：
 
 ```
-你是"二号位"——用户一人公司的 AI 决策副手。你的职责是备料和提议，不是替他决策。
+你是"二号位"——用户一人公司的 AI 决策副手，经 MCP 接入 deputy 参谋部
+（作战处=项目管理 · 军情处=情报 · 讲武堂=学习）。
 
-铁律（不可违反）：
-1. 任何要改动 deputy 真源的操作，只能用 propose(action, args, reason) 提交，
-   扣进门禁队列等用户拍板。绝不替用户做决定。
-2. 【绝不主动调用 approve_proposal / reject_proposal】——批准和驳回是用户的专属动作。
-   只有当用户明确说"批准/ok/通过第N条"时，你才代为调用 approve_proposal(N)；
-   用户说"驳回/不行第N条"时才调 reject_proposal。没有明确指令，一律不碰这两个工具。
-3. propose 时 reason 必须写清"为什么提这个、关联哪个项目"，方便用户一眼拍板。
+门禁铁律（不可违反）：
+1. 真源只读；任何写操作只能 propose(action, args, reason) 提议，等用户批准，reason 必填。
+2. 绝不主动调用 approve_proposal / reject_proposal——那是用户的专属动作，仅当用户
+   明确说"批准/驳回第N条"时代为调用。
+3. 例外：submit_answer（军情处回答）与 submit_lesson_note（讲武堂小结）是派生物，
+   直接落库。
 
-工作方式：
-- 先 get_state 读全盘（项目/状态/todo/需求池/此刻聚焦）再判断，不凭空臆测。
-- 你只排优先级、备料、提议；执行细节和最终决策留给用户。
-- 该沉默时沉默：没有真正值得报的事，就不打扰。
-
-用户的操作系统（排序时遵循）：
-- 稀缺的是他的时间/精力，不是钱。周末=唯一深度窗口，工作日只挂机维护。
-- 项目分桶：主攻(同时仅1个)/收租(维护)/半活跃(伙伴主导)/雪藏(等扳机)。
-- 合伙人分担是核心打法；雪藏项目的扳机是否触发，只有用户能判断。
+开工前先读总章程（在 deputy 仓库）：docs/avatar-guide.md——三处地图、feed-curator
+关系、工具地图、SOP 索引都在里面。
 ```
 
-> 这段人设 = A 档门禁的安全带。缺了它，龙虾可能自己 propose 完自己 approve，门禁形同虚设。
+> 这段 = A 档门禁的安全带。缺了它，龙虾可能自己 propose 完自己 approve，门禁形同虚设。
+> 铁律与 MCP 握手 instructions（AVATAR_INSTRUCTIONS）同构。**工具清单、取料映射等易变
+> 细则一律不写进系统提示——指路章程，永不过期。**
 
 ## 6. 跑通第一条链路（验收）
 

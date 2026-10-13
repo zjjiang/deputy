@@ -49,6 +49,22 @@ def test_mcp_has_no_direct_write_tools():
     assert not leaked, f"MCP 泄漏了直写工具，绕过门禁：{leaked}"
 
 
+def test_mcp_declares_avatar_instructions():
+    """握手 instructions 携带精简章程：门禁铁律要点 + 指路总章程（见 add-avatar-guide）。
+
+    注意：此通道是"白赚"——投递不依赖它（OpenClaw 未必透传），但既然声明了就必须有效。
+    """
+    from app.mcp_server import mcp
+
+    instructions = mcp.instructions or ""
+    assert instructions.strip(), "MCP 握手未声明 instructions（精简章程）"
+    # 门禁铁律要点：提议门禁 + 绝不自批
+    assert "propose" in instructions
+    assert "approve" in instructions
+    # 指路总章程：分身要知道唯一真源在哪
+    assert "docs/avatar-guide.md" in instructions
+
+
 def test_avatar_flow_list_then_submit(fresh_db):
     """分身视角端到端：取到期题 → 提交回答 → 回答可见且问题状态推进。"""
     from app.store import questions
