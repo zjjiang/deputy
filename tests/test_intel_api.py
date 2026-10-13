@@ -96,3 +96,19 @@ def test_intel_unavailable_503_and_questions_unaffected(client, fresh_db, monkey
     # 奏折面无恙：问题列表照常可用
     r2 = client.post("/api/question/add", json={"title": "t", "prompt": "p"})
     assert r2.status_code == 200
+
+
+def test_intel_stats_proxy(client, fake_curator, monkeypatch):
+    """统计代理：days 透传，响应原样返回。"""
+    from app.services import curator
+
+    def fake_admin_stats(**kw):
+        fake_curator["admin_stats"] = kw
+        return {"daily": [{"date": "2026-10-13", "ingested": 3}],
+                "pipes": [], "domains": []}
+
+    monkeypatch.setattr(curator, "admin_stats", fake_admin_stats)
+    r = client.get("/api/intel/stats", params={"days": 14})
+    assert r.status_code == 200
+    assert r.json()["daily"][0]["ingested"] == 3
+    assert fake_curator["admin_stats"]["days"] == 14

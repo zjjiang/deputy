@@ -85,6 +85,18 @@ def domains(client: httpx.Client | None = None) -> list[dict[str, Any]]:
     return result
 
 
+def admin_stats(
+    *,
+    days: int | None = None,
+    client: httpx.Client | None = None,
+) -> dict[str, Any]:
+    """窗口统计（feed-curator GET /api/admin/stats），只读导出。"""
+    return _request(
+        client, "GET", "/api/admin/stats",
+        params=_clean({"days": days}),
+    )
+
+
 def set_reading(
     doc_id: int,
     *,
