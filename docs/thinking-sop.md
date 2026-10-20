@@ -86,5 +86,5 @@ propose("add_question", {title, prompt, cadence, filter}, reason="...")
    不起来的话取料必失败，整个功能不可用。
 2. （推荐）feed-curator 配 `DEEPSEEK_API_KEY` 并跑一轮 `/api/analyze/run`——给存量文档
    生成摘要/星级/领域，取料又准又省 token。不配也能跑，你直接读全文，token 稍重。
-3. 确认 deputy 已按 `docs/lobster-setup.md` 挂进龙虾的 MCP（stdio，同机）。
+3. 确认 deputy 已按 `docs/lobster-setup.md` 挂进龙虾的 MCP（stdio，同机；从零装机全链路见 `docs/openclaw-setup.md`）。
 4. 注册 §0 的 cron job。

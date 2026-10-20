@@ -49,22 +49,26 @@ uv run python -m app.mcp_server           # MCP：能启动不报错即可（Ctr
 
 ## 4. 在龙虾里配置 MCP（stdio）
 
-在龙虾的 MCP 配置中加一个 server（不同龙虾版本配置文件位置/格式略有差异，键值照下面填）：
+用 `openclaw mcp` 命令（OpenClaw 2026.10+；老版本先 `openclaw update`）：
 
-```json
-{
-  "mcpServers": {
-    "deputy": {
-      "command": "uv",
-      "args": ["run", "python", "-m", "app.mcp_server"],
-      "cwd": "/绝对路径/到/deputy"
-    }
-  }
-}
+```bash
+openclaw mcp add deputy --command uv --arg run --arg python --arg -m --arg app.mcp_server \
+  --cwd /绝对路径/到/deputy
+openclaw mcp doctor deputy --probe   # 验证连通，能列出工具即成功
+```
+
+等价的 config 形状（`~/.openclaw/openclaw.json` 顶层 `mcp.servers`）：
+
+```json5
+{ "mcp": { "servers": { "deputy": {
+    "command": "uv", "args": ["run", "python", "-m", "app.mcp_server"],
+    "cwd": "/绝对路径/到/deputy", "transport": "stdio", "enabled": true } } } }
 ```
 
 - `cwd` 必须是 deputy 目录的**绝对路径**（龙虾要在这个目录下拉起进程，才能找到 `app/` 和 `data/`）。
-- 若 `uv` 不在 PATH，把 `command` 换成 `uv` 的绝对路径（`which uv` 查）。
+- 若 `uv` 不在 PATH，`command` 换成 `uv` 的绝对路径（`which uv` 查）。
+- 改 config 后 gateway 需 reload/重启才刷新工具。
+- 从零搭整台龙虾机器（渠道/心跳/双 MCP）见 `docs/openclaw-setup.md`。
 
 配好后重启龙虾，验证它能列出 deputy 的工具——**全集以总章程的工具地图为准**
 （`docs/avatar-guide.md` §5，共 11 个），能对上即接入成功。
